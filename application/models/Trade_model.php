@@ -8,127 +8,289 @@ class Trade_model extends CI_Model {
         $this->load->database();
     }
     
-    public function get_incoming_requests($user_id) {
-        return $this->db->select('tr.*, s.name as sticker_name, s.image, u.username as requester_name')
-                        ->from('trade_requests tr')
-                        ->join('stickers s', 's.id = tr.sticker_id')
-                        ->join('users u', 'u.id = tr.requester_id')
-                        ->where('tr.owner_id', $user_id)
-                        ->where('tr.status', 'pending')
-                        ->order_by('tr.created_at', 'DESC')
-                        ->get()->result();
+    public function create_trade($data) {
+        $data['created_at'] = date('Y-m-d H:i:s');
+        return $this->db->insert('trades', $data);
     }
     
-    public function get_outgoing_requests($user_id) {
-        return $this->db->select('tr.*, s.name as sticker_name, s.image, u.username as owner_name')
-                        ->from('trade_requests tr')
-                        ->join('stickers s', 's.id = tr.sticker_id')
-                        ->join('users u', 'u.id = tr.owner_id')
-                        ->where('tr.requester_id', $user_id)
-                        ->where('tr.status', 'pending')
-                        ->order_by('tr.created_at', 'DESC')
-                        ->get()->result();
-    }
-    
-    public function create_trade_request($requester_id, $owner_id, $sticker_id, $message) {
-        return $this->db->insert('trade_requests', [
-            'requester_id' => $requester_id,
-            'owner_id' => $owner_id,
-            'sticker_id' => $sticker_id,
-            'message' => $message,
-            'status' => 'pending',
-            'created_at' => date('Y-m-d H:i:s')
-        ]);
-    }
-    
-    public function update_request_status($request_id, $status, $user_id) {
-        $request = $this->db->get_where('trade_requests', ['id' => $request_id])->row();
+    public function get_user_trades($user_id) {
+        $this->db->select('t.*, 
+                          rsc.name as requested_category,
+                          osc.name as offered_category,
+                          u1.username as requester_username,
+                          u2.username as owner_username,
+                          rus.image_path as requested_image,
+                          ous.image_path as offered_image,
+                          rs.number as requested_number,
+                          os.number as offered_number')
+            ->from('trades t')
+            ->join('stickers rs', 'rs.id = t.requested_sticker_id')
+            ->join('stickers os', 'os.id = t.offered_sticker_id')
+            ->join('sticker_categories rsc', 'rsc.id = rs.category_id')
+            ->join('sticker_categories osc', 'osc.id = os.category_id')
+            ->join('users u1', 'u1.id = t.requester_id')
+            ->join('users u2', 'u2.id = t.owner_id')
+            ->join('user_stickers rus', 'rus.sticker_id = rs.id AND rus.user_id = t.owner_id', 'left')
+            ->join('user_stickers ous', 'ous.sticker_id = os.id AND ous.user_id = t.requester_id', 'left')
+            ->where('t.requester_id', $user_id)
+            ->or_where('t.owner_id', $user_id)
+            ->order_by('t.created_at', 'DESC');
         
-        if (!$request || $request->owner_id != $user_id) {
-            return false;
-        }
-        
-        return $this->db->where('id', $request_id)
-                        ->update('trade_requests', [
+        return $this->db->get()->result();
+    }
+    
+    public function update_trade_status($trade_id, $status) {
+        return $this->db->where('id', $trade_id)
+                        ->update('trades', [
                             'status' => $status,
                             'updated_at' => date('Y-m-d H:i:s')
                         ]);
     }
     
-    public function get_trade_history($user_id) {
-        $this->db->select('tr.*, s.name as sticker_name, s.image as sticker_image, 
-                          u1.username as requester_name, u2.username as owner_name');
-        $this->db->from('trade_requests tr');
-        $this->db->join('stickers s', 's.id = tr.sticker_id');
-        $this->db->join('users u1', 'u1.id = tr.requester_id');
-        $this->db->join('users u2', 'u2.id = tr.owner_id');
-        $this->db->where('tr.requester_id', $user_id);
-        $this->db->or_where('tr.owner_id', $user_id);
-        $this->db->order_by('tr.created_at', 'DESC');
+    public function get_trade($trade_id) {
+        $this->db->select('t.*, 
+                          rus.image_path as requested_image,
+                          ous.image_path as offered_image,
+                          u1.username as requester_username,
+                          u2.username as owner_username,
+                          rsc.name as requested_category,
+                          osc.name as offered_category');
+        $this->db->from('trades t');
+        $this->db->join('stickers rs', 'rs.id = t.requested_sticker_id');
+        $this->db->join('stickers os', 'os.id = t.offered_sticker_id');
+        $this->db->join('user_stickers rus', 'rus.sticker_id = rs.id AND rus.user_id = t.owner_id', 'left');
+        $this->db->join('user_stickers ous', 'ous.sticker_id = os.id AND ous.user_id = t.requester_id', 'left');
+        $this->db->join('sticker_categories rsc', 'rsc.id = rs.category_id');
+        $this->db->join('sticker_categories osc', 'osc.id = os.category_id');
+        $this->db->join('users u1', 'u1.id = t.requester_id');
+        $this->db->join('users u2', 'u2.id = t.owner_id');
+        $this->db->where('t.id', $trade_id);
         
-        $result = $this->db->get()->result();
-        
+        return $this->db->get()->row();
+    }
+
+    public function get_recent_trades($user_id, $limit = 5) {
+        $this->db->select('t.*, 
+                          rus.image_path as requested_image,
+                          ous.image_path as offered_image,
+                          u1.username as requester_username, 
+                          u2.username as owner_username,
+                          rsc.name as requested_category,
+                          osc.name as offered_category');
+        $this->db->from('trades t');
+        $this->db->join('stickers rs', 'rs.id = t.requested_sticker_id');
+        $this->db->join('stickers os', 'os.id = t.offered_sticker_id');
+        $this->db->join('user_stickers rus', 'rus.sticker_id = rs.id AND rus.user_id = t.owner_id', 'left');
+        $this->db->join('user_stickers ous', 'ous.sticker_id = os.id AND ous.user_id = t.requester_id', 'left');
+        $this->db->join('sticker_categories rsc', 'rsc.id = rs.category_id');
+        $this->db->join('sticker_categories osc', 'osc.id = os.category_id');
+        $this->db->join('users u1', 'u1.id = t.requester_id');
+        $this->db->join('users u2', 'u2.id = t.owner_id');
+        $this->db->where("(t.requester_id = $user_id OR t.owner_id = $user_id)");
+        $this->db->order_by('t.created_at', 'DESC');
+        $this->db->limit($limit);
+        return $this->db->get()->result();
+    }
+
+    public function count_user_trades($user_id) {
+        return $this->db->where('(requester_id = '.$user_id.' OR owner_id = '.$user_id.')')
+                       ->where('status', 'completed')
+                       ->count_all_results('trades');
+    }
+
+    public function count_trades() {
+        return $this->db->count_all('trades');
+    }
+
+    public function count_pending_trades() {
+        return $this->db->where('status', 'pending')->count_all_results('trades');
+    }
+
+    public function get_trade_stats() {
+        $total_trades = $this->count_trades();
+        $pending_trades = $this->count_pending_trades();
         return [
-            'sent_trades' => array_filter($result, function($trade) use ($user_id) {
-                return $trade->requester_id == $user_id;
-            }),
-            'received_trades' => array_filter($result, function($trade) use ($user_id) {
-                return $trade->owner_id == $user_id;
-            })
+            'total_trades' => $total_trades,
+            'pending_trades' => $pending_trades
         ];
     }
     
-    public function delete_trade_history($id, $user_id) {
-        $trade = $this->db->get_where('trade_requests', ['id' => $id])->row();
+    public function get_user_trades_chart($user_id, $period = 'monthly') {
+        $format = $period == 'daily' ? '%Y-%m-%d' : 
+                 ($period == 'weekly' ? '%Y-%u' : '%Y-%m');
+                 
+        $sql = "SELECT DATE_FORMAT(created_at, ?) as period, 
+                COUNT(*) as total,
+                MIN(created_at) as min_date
+                FROM trades 
+                WHERE (requester_id = ? OR owner_id = ?)
+                AND created_at >= DATE_SUB(NOW(), INTERVAL 1 YEAR)
+                GROUP BY period
+                ORDER BY min_date ASC";
+                
+        return $this->db->query($sql, [$format, $user_id, $user_id])->result();
+    }
+
+    public function get_all_trades($limit = null, $offset = 0) {
+        $this->db->select('t.*, 
+                          rus.image_path as requested_image,
+                          ous.image_path as offered_image,
+                          u1.username as requester_username, 
+                          u2.username as owner_username,
+                          rsc.name as requested_category,
+                          osc.name as offered_category');
+        $this->db->from('trades t');
+        $this->db->join('stickers rs', 'rs.id = t.requested_sticker_id');
+        $this->db->join('stickers os', 'os.id = t.offered_sticker_id');
+        $this->db->join('user_stickers rus', 'rus.sticker_id = rs.id AND rus.user_id = t.owner_id', 'left');
+        $this->db->join('user_stickers ous', 'ous.sticker_id = os.id AND ous.user_id = t.requester_id', 'left');
+        $this->db->join('sticker_categories rsc', 'rsc.id = rs.category_id');
+        $this->db->join('sticker_categories osc', 'osc.id = os.category_id');
+        $this->db->join('users u1', 'u1.id = t.requester_id');
+        $this->db->join('users u2', 'u2.id = t.owner_id');
         
-        if (!$trade || ($trade->requester_id != $user_id && $trade->owner_id != $user_id)) {
-            return false;
+        $this->db->order_by('t.created_at', 'DESC');
+        
+        if($limit) {
+            $this->db->limit($limit, $offset);
         }
         
-        return $this->db->delete('trade_requests', ['id' => $id]);
-    }
-    
-    public function get_sticker_owners($sticker_id) {
-        return $this->db->select('u.id, u.username, us.quantity')
-                        ->from('user_stickers us')
-                        ->join('users u', 'u.id = us.user_id')
-                        ->where('us.sticker_id', $sticker_id)
-                        ->where('us.quantity >', 0)
-                        ->where('u.id !=', $this->session->userdata('user_id'))
-                        ->get()->result();
+        return $this->db->get()->result();
     }
 
-    public function count_pending_trades($user_id) {
-        return $this->db->where('requester_id', $user_id)
-                        ->where('status', 'pending')
-                        ->from('trade_requests')
-                        ->count_all_results();
+    public function get_trades_by_status($status, $limit = null) {
+        $this->db->select('t.*, 
+                          rus.image_path as requested_image,
+                          ous.image_path as offered_image,
+                          u1.username as requester_username,
+                          u2.username as owner_username,
+                          rsc.name as requested_category,
+                          osc.name as offered_category');
+        $this->db->from('trades t');
+        $this->db->join('stickers rs', 'rs.id = t.requested_sticker_id');
+        $this->db->join('stickers os', 'os.id = t.offered_sticker_id');
+        $this->db->join('user_stickers rus', 'rus.sticker_id = rs.id AND rus.user_id = t.owner_id', 'left');
+        $this->db->join('user_stickers ous', 'ous.sticker_id = os.id AND ous.user_id = t.requester_id', 'left');
+        $this->db->join('sticker_categories rsc', 'rsc.id = rs.category_id');
+        $this->db->join('sticker_categories osc', 'osc.id = os.category_id');
+        $this->db->join('users u1', 'u1.id = t.requester_id');
+        $this->db->join('users u2', 'u2.id = t.owner_id');
+        $this->db->where('t.status', $status);
+        $this->db->order_by('t.created_at', 'DESC');
+        
+        if($limit) {
+            $this->db->limit($limit);
+        }
+        
+        return $this->db->get()->result();
     }
 
-    public function get_recent_trades($user_id, $limit = 10) {
-        return $this->db->select('tr.*, s.name as sticker_name, s.image, u1.username as requester_name, u2.username as owner_name')
-                        ->from('trade_requests tr')
-                        ->join('stickers s', 's.id = tr.sticker_id')
-                        ->join('users u1', 'u1.id = tr.requester_id')
-                        ->join('users u2', 'u2.id = tr.owner_id')
-                        ->where('tr.requester_id', $user_id)
-                        ->or_where('tr.owner_id', $user_id)
-                        ->order_by('tr.created_at', 'DESC')
-                        ->limit($limit)
-                        ->get()->result();
+    public function get_trades_report($start_date = null, $end_date = null, $period = 'monthly') {
+        $format = $period == 'daily' ? '%Y-%m-%d' : 
+                 ($period == 'weekly' ? '%Y-%u' : '%Y-%m');
+                 
+        $sql = "SELECT 
+                DATE_FORMAT(created_at, ?) as period,
+                COUNT(*) as total,
+                COUNT(CASE WHEN status = 'accepted' THEN 1 END) as accepted,
+                COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected,
+                MIN(created_at) as min_date
+                FROM trades";
+                
+        if($start_date && $end_date) {
+            $sql .= " WHERE created_at BETWEEN ? AND ?";
+        }
+        
+        $sql .= " GROUP BY period ORDER BY min_date ASC";
+        
+        $params = [$format];
+        if($start_date && $end_date) {
+            $params[] = $start_date;
+            $params[] = $end_date;
+        }
+        
+        return $this->db->query($sql, $params)->result();
     }
 
-    public function count_total_trades($user_id) {
-        return $this->db->where('requester_id', $user_id)
-                        ->or_where('owner_id', $user_id)
-                        ->from('trade_requests')
-                        ->count_all_results();
+    public function get_trades_chart($user_id, $period = 'monthly') {
+        $format = $period == 'daily' ? '%Y-%m-%d' : 
+                 ($period == 'weekly' ? '%Y-%u' : '%Y-%m');
+                 
+        $sql = "SELECT DATE_FORMAT(created_at, ?) as period, 
+                COUNT(*) as total,
+                MIN(created_at) as min_date
+                FROM trades 
+                WHERE (requester_id = ? OR owner_id = ?)
+                AND created_at >= DATE_SUB(NOW(), INTERVAL 1 YEAR)
+                GROUP BY period
+                ORDER BY min_date ASC";
+                
+        return $this->db->query($sql, [$format, $user_id, $user_id])->result();
     }
 
-    public function count_success_trades($user_id) {
-        return $this->db->where('requester_id', $user_id)
-                        ->where('status', 'success')
-                        ->from('trade_requests')
-                        ->count_all_results();
+    public function get_completion_rate($user_id) {
+        $total_trades = $this->count_user_trades($user_id);
+        
+        if($total_trades == 0) {
+            return 0;
+        }
+        
+        $completed_trades = $this->count_user_trades($user_id, 'accepted');
+        
+        return ($completed_trades / $total_trades) * 100;
+    }
+
+    public function get_trade_details($trade_id) {
+        $this->db->select('t.*, 
+                          rsc.name as requested_category,
+                          osc.name as offered_category,
+                          u1.username as requester_username,
+                          u2.username as owner_username,
+                          rus.image_path as requested_image,
+                          ous.image_path as offered_image,
+                          rs.number as requested_number,
+                          os.number as offered_number')
+            ->from('trades t')
+            ->join('stickers rs', 'rs.id = t.requested_sticker_id')
+            ->join('stickers os', 'os.id = t.offered_sticker_id')
+            ->join('sticker_categories rsc', 'rsc.id = rs.category_id')
+            ->join('sticker_categories osc', 'osc.id = os.category_id')
+            ->join('users u1', 'u1.id = t.requester_id')
+            ->join('users u2', 'u2.id = t.owner_id')
+            ->join('user_stickers rus', 'rus.sticker_id = rs.id AND rus.user_id = t.owner_id', 'left')
+            ->join('user_stickers ous', 'ous.sticker_id = os.id AND ous.user_id = t.requester_id', 'left')
+            ->where('t.id', $trade_id);
+        
+        return $this->db->get()->row();
+    }
+
+    public function accept_trade($trade_id) {
+        return $this->db->where('id', $trade_id)
+            ->update('trades', [
+                'status' => 'accepted',
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+    }
+
+    public function reject_trade($trade_id) {
+        return $this->db->where('id', $trade_id)
+            ->update('trades', [
+                'status' => 'rejected',
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+    }
+
+    public function get_trade_messages($trade_id) {
+        return $this->db->select('tm.*, u.username')
+            ->from('trade_messages tm')
+            ->join('users u', 'u.id = tm.user_id')
+            ->where('tm.trade_id', $trade_id)
+            ->order_by('tm.created_at', 'ASC')
+            ->get()
+            ->result();
+    }
+
+    public function add_message($data) {
+        return $this->db->insert('trade_messages', $data);
     }
 } 

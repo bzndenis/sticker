@@ -1,7 +1,11 @@
 <?php
+defined('BASEPATH') OR exit('No direct script access allowed');
+
 if (!function_exists('time_elapsed_string')) {
     function time_elapsed_string($datetime) {
-        $now = new DateTime;
+        $CI =& get_instance();
+        
+        $now = new DateTime();
         $ago = new DateTime($datetime);
         $diff = $now->diff($ago);
 
@@ -26,7 +30,11 @@ if (!function_exists('time_elapsed_string')) {
             }
         }
 
+        if (!$string) {
+            return 'baru saja';
+        }
+
         $string = array_slice($string, 0, 1);
-        return $string ? implode(', ', $string) . ' yang lalu' : 'baru saja';
+        return $string[key($string)] . ' yang lalu';
     }
 } 

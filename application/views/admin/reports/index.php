@@ -1,90 +1,167 @@
-<div class="main-panel">
-    <div class="content-wrapper">
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h4 class="card-title mb-0">Daftar Laporan</h4>
-                            <div class="dropdown">
-                                <button class="btn btn-secondary dropdown-toggle" type="button" 
-                                        id="bulkActionButton" data-toggle="dropdown" disabled>
-                                    Aksi Massal
-                                </button>
-                                <div class="dropdown-menu">
-                                    <a class="dropdown-item" href="javascript:void(0)" 
-                                       onclick="bulkAction('mark_read')">
-                                        <i class="mdi mdi-eye"></i> Tandai Dibaca
-                                    </a>
-                                    <div class="dropdown-divider"></div>
-                                    <a class="dropdown-item text-danger" href="javascript:void(0)" 
-                                       onclick="bulkAction('delete')">
-                                        <i class="mdi mdi-delete"></i> Hapus
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
+<?php 
+$data['title'] = 'Laporan';
+$this->load->view('templates/header', $data); 
+?>
 
-                        <div class="table-responsive">
-                            <table class="table table-hover" id="reportsTable">
-                                <thead>
-                                    <tr>
-                                        <th>
-                                            <div class="custom-control custom-checkbox">
-                                                <input type="checkbox" class="custom-control-input" 
-                                                       id="checkAll">
-                                                <label class="custom-control-label" for="checkAll"></label>
-                                            </div>
-                                        </th>
-                                        <th>ID</th>
-                                        <th>Tipe</th>
-                                        <th>Pelapor</th>
-                                        <th>User Dilaporkan</th>
-                                        <th>Tanggal</th>
-                                        <th>Status</th>
-                                        <th>Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach($reports as $report): ?>
-                                    <tr class="<?= $report->status == 'new' ? 'table-warning' : '' ?>">
-                                        <td>
-                                            <div class="custom-control custom-checkbox">
-                                                <input type="checkbox" class="custom-control-input report-checkbox" 
-                                                       id="check<?= $report->id ?>" value="<?= $report->id ?>">
-                                                <label class="custom-control-label" 
-                                                       for="check<?= $report->id ?>"></label>
-                                            </div>
-                                        </td>
-                                        <td>#<?= $report->id ?></td>
-                                        <td>
-                                            <span class="badge badge-<?= get_report_type_badge($report->type) ?>">
-                                                <?= ucfirst($report->type) ?>
-                                            </span>
-                                        </td>
-                                        <td><?= $report->reporter_username ?></td>
-                                        <td><?= $report->reported_username ?></td>
-                                        <td><?= date('d M Y H:i', strtotime($report->created_at)) ?></td>
-                                        <td>
-                                            <span class="badge badge-<?= get_report_status_badge($report->status) ?>">
-                                                <?= ucfirst($report->status) ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <a href="<?= base_url('admin/reports/view/'.$report->id) ?>" 
-                                               class="btn btn-sm btn-outline-info mr-2">
-                                                <i class="mdi mdi-eye"></i>
-                                            </a>
-                                            <button class="btn btn-sm btn-outline-danger"
-                                                    onclick="deleteReport(<?= $report->id ?>)">
-                                                <i class="mdi mdi-delete"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
+<?php $this->load->view('templates/admin_navbar'); ?>
+
+<div class="container my-4">
+    <h2 class="mb-4">Laporan</h2>
+
+    <!-- Filter Laporan -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Periode</label>
+                    <select name="period" class="form-select">
+                        <option value="daily" <?= $period == 'daily' ? 'selected' : '' ?>>Harian</option>
+                        <option value="weekly" <?= $period == 'weekly' ? 'selected' : '' ?>>Mingguan</option>
+                        <option value="monthly" <?= $period == 'monthly' ? 'selected' : '' ?>>Bulanan</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Tanggal Mulai</label>
+                    <input type="date" name="start_date" class="form-control" 
+                           value="<?= $start_date ?>" max="<?= date('Y-m-d') ?>">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Tanggal Selesai</label>
+                    <input type="date" name="end_date" class="form-control" 
+                           value="<?= $end_date ?>" max="<?= date('Y-m-d') ?>">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-filter"></i> Filter
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Statistik Utama -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Total Pengguna</h6>
+                            <h2 class="mb-0"><?= $total_users ?></h2>
                         </div>
+                        <i class="bi bi-people" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Total Koleksi</h6>
+                            <h2 class="mb-0"><?= $total_collections ?></h2>
+                        </div>
+                        <i class="bi bi-collection" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Total Stiker</h6>
+                            <h2 class="mb-0"><?= $total_stickers ?></h2>
+                        </div>
+                        <i class="bi bi-images" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Total Pertukaran</h6>
+                            <h2 class="mb-0"><?= $total_trades ?></h2>
+                        </div>
+                        <i class="bi bi-arrow-left-right" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Grafik Pengguna Baru -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Pengguna Baru</h5>
+                    <canvas id="newUsersChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grafik Pengguna Aktif -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Pengguna Aktif</h5>
+                    <canvas id="activeUsersChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grafik Pertukaran -->
+        <div class="col-md-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Statistik Pertukaran</h5>
+                    <canvas id="tradesChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Koleksi -->
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Progress Koleksi Pengguna</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Total Koleksi</th>
+                                    <th>Total Stiker</th>
+                                    <th>Progress</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach($collection_progress as $progress): ?>
+                                    <tr>
+                                        <td><?= $progress->username ?></td>
+                                        <td><?= $progress->total_collections ?></td>
+                                        <td><?= $progress->total_stickers ?></td>
+                                        <td>
+                                            <div class="progress">
+                                                <div class="progress-bar" role="progressbar" 
+                                                     style="width: <?= $progress->progress ?>%">
+                                                    <?= number_format($progress->progress, 1) ?>%
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -92,95 +169,70 @@
     </div>
 </div>
 
+<?php
+$data['extra_js'] = '
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-$(document).ready(function() {
-    $('#reportsTable').DataTable({
-        "order": [[ 5, "desc" ]],
-        "pageLength": 25
-    });
-    
-    // Handle checkbox
-    $('#checkAll').change(function() {
-        $('.report-checkbox').prop('checked', $(this).prop('checked'));
-        toggleBulkAction();
-    });
-    
-    $('.report-checkbox').change(function() {
-        toggleBulkAction();
-    });
+// Grafik Pengguna Baru
+new Chart(document.getElementById("newUsersChart"), {
+    type: "line",
+    data: {
+        labels: '.json_encode(array_column($new_users, 'period')).',
+        datasets: [{
+            label: "Pengguna Baru",
+            data: '.json_encode(array_column($new_users, 'total')).',
+            borderColor: "rgb(75, 192, 192)",
+            tension: 0.1
+        }]
+    }
 });
 
-function toggleBulkAction() {
-    const checkedCount = $('.report-checkbox:checked').length;
-    $('#bulkActionButton').prop('disabled', checkedCount === 0);
-}
-
-function bulkAction(action) {
-    const ids = $('.report-checkbox:checked').map(function() {
-        return $(this).val();
-    }).get();
-    
-    if (ids.length === 0) return;
-    
-    let confirmMessage = '';
-    switch(action) {
-        case 'mark_read':
-            confirmMessage = 'Tandai semua laporan terpilih sebagai dibaca?';
-            break;
-        case 'delete':
-            confirmMessage = 'Hapus semua laporan terpilih?';
-            break;
+// Grafik Pengguna Aktif
+new Chart(document.getElementById("activeUsersChart"), {
+    type: "line",
+    data: {
+        labels: '.json_encode(array_column($active_users, 'period')).',
+        datasets: [{
+            label: "Pengguna Aktif",
+            data: '.json_encode(array_column($active_users, 'total')).',
+            borderColor: "rgb(54, 162, 235)",
+            tension: 0.1
+        }]
     }
-    
-    Swal.fire({
-        title: 'Konfirmasi',
-        text: confirmMessage,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Ya',
-        cancelButtonText: 'Batal'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.ajax({
-                url: '<?= base_url("admin/reports/bulk_action") ?>',
-                type: 'POST',
-                data: { ids: ids, action: action },
-                success: function(response) {
-                    if(response.success) {
-                        Swal.fire('Berhasil!', response.message, 'success')
-                        .then(() => location.reload());
-                    } else {
-                        Swal.fire('Gagal!', response.message, 'error');
-                    }
-                }
-            });
-        }
-    });
-}
+});
 
-function deleteReport(id) {
-    Swal.fire({
-        title: 'Hapus Laporan?',
-        text: 'Laporan yang sudah dihapus tidak dapat dikembalikan',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Ya, Hapus',
-        cancelButtonText: 'Batal'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.ajax({
-                url: '<?= base_url("admin/reports/delete/") ?>' + id,
-                type: 'POST',
-                success: function(response) {
-                    if(response.success) {
-                        Swal.fire('Berhasil!', 'Laporan telah dihapus', 'success')
-                        .then(() => location.reload());
-                    } else {
-                        Swal.fire('Gagal!', 'Gagal menghapus laporan', 'error');
-                    }
+// Grafik Pertukaran
+new Chart(document.getElementById("tradesChart"), {
+    type: "bar",
+    data: {
+        labels: '.json_encode(array_column($trades, 'period')).',
+        datasets: [{
+            label: "Total",
+            data: '.json_encode(array_column($trades, 'total')).',
+            backgroundColor: "rgb(75, 192, 192)"
+        }, {
+            label: "Diterima",
+            data: '.json_encode(array_column($trades, 'accepted')).',
+            backgroundColor: "rgb(54, 162, 235)"
+        }, {
+            label: "Ditolak",
+            data: '.json_encode(array_column($trades, 'rejected')).',
+            backgroundColor: "rgb(255, 99, 132)"
+        }]
+    },
+    options: {
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
                 }
-            });
+            }
         }
-    });
-}
-</script> 
+    }
+});
+</script>
+';
+?>
+
+<?php $this->load->view('templates/footer', $data); ?> 

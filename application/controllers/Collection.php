@@ -6,37 +6,43 @@ class Collection extends CI_Controller {
     public function __construct() {
         parent::__construct();
         $this->load->model('sticker_model');
-        $this->load->library('session');
-        $this->load->helper('url');
         
-        if (!$this->session->userdata('logged_in')) {
+        if(!$this->session->userdata('user_id')) {
             redirect('auth/login');
         }
     }
 
     public function index() {
         $user_id = $this->session->userdata('user_id');
-        
-        $data['title'] = 'Koleksi Saya';
-        $data['categories'] = $this->sticker_model->get_categories();
-        $data['collection'] = $this->sticker_model->get_user_collection($user_id);
-        
-        $this->load->view('templates/header', $data);
-        $this->load->view('templates/sidebar');
-        $this->load->view('collection/index');
-        $this->load->view('templates/footer');
+
+        // Get collection stats
+        $data['stats'] = (object) [
+            'total_stickers' => $this->sticker_model->count_user_stickers($user_id),
+            'unique_stickers' => $this->sticker_model->count_unique_stickers($user_id),
+            'tradeable_stickers' => $this->sticker_model->count_tradeable_stickers($user_id),
+            'completion_rate' => $this->sticker_model->get_collection_completion_rate($user_id)
+        ];
+
+        // Get collections with progress
+        $data['collections'] = $this->sticker_model->get_collections_with_progress($user_id);
+
+        $this->load->view('collection/index', $data);
     }
 
-    public function update_quantity() {
-        if (!$this->input->is_ajax_request()) {
-            exit('No direct script access allowed');
-        }
-
+    public function toggle_trade() {
         $sticker_id = $this->input->post('sticker_id');
-        $quantity = $this->input->post('quantity');
-        $user_id = $this->session->userdata('user_id');
+        $status = $this->input->post('status');
         
-        $result = $this->sticker_model->update_sticker_quantity($user_id, $sticker_id, $quantity);
-        echo json_encode(['success' => $result]);
+        $result = $this->sticker_model->toggle_trade_status(
+            $sticker_id, 
+            $this->session->userdata('user_id'),
+            $status
+        );
+
+        $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode([
+                'success' => $result
+            ]));
     }
 } 

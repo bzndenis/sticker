@@ -8,54 +8,52 @@ class User_model extends CI_Model {
         $this->load->database();
     }
     
-    public function check_login($username, $password) {
-        $this->db->where('username', $username);
-        $user = $this->db->get('users')->row();
+    public function get_user_by_email($email) {
+        return $this->db->where('email', $email)
+                       ->get('users')
+                       ->row();
+    }
+    
+    public function login($username, $password) {
+        $user = $this->db->where('username', $username)
+                        ->get('users')
+                        ->row();
         
-        if ($user && password_verify($password, $user->password)) {
+        if($user && password_verify($password, $user->password)) {
             return $user;
         }
         return false;
     }
-
+    
     public function register($data) {
         return $this->db->insert('users', $data);
     }
-
-    public function get_user_detail($user_id) {
-        return $this->db->get_where('users', ['id' => $user_id])->row();
+    
+    public function get_user($id) {
+        return $this->db->where('id', $id)
+                       ->get('users')
+                       ->row();
     }
-
-    public function update_user($user_id, $data) {
-        return $this->db->where('id', $user_id)->update('users', $data);
+    
+    public function update_user($id, $data) {
+        return $this->db->where('id', $id)
+                       ->update('users', $data);
     }
-
-    public function get_notification_settings($user_id) {
-        $settings = $this->db->get_where('notification_settings', ['user_id' => $user_id])->row();
-        
-        if (!$settings) {
-            // Jika belum ada settings, buat default sesuai struktur tabel
-            $default_settings = [
-                'user_id' => $user_id,
-                'trade_notification' => 1,
-                'chat_notification' => 1, 
-                'email_notification' => 1
-            ];
-            $this->db->insert('notification_settings', $default_settings);
-            return (object) $default_settings;
-        }
-        
-        return $settings;
+    
+    public function delete_user($id) {
+        return $this->db->where('id', $id)
+                       ->delete('users');
     }
-
-    public function update_notification_settings($user_id, $data) {
-        $exists = $this->db->get_where('notification_settings', ['user_id' => $user_id])->row();
-        
-        if ($exists) {
-            return $this->db->where('user_id', $user_id)->update('notification_settings', $data);
-        } else {
-            $data['user_id'] = $user_id;
-            return $this->db->insert('notification_settings', $data);
-        }
+    
+    public function count_user_stickers($user_id) {
+        return $this->db->where('user_id', $user_id)
+                       ->count_all_results('user_stickers');
+    }
+    
+    public function update_last_login($user_id) {
+        return $this->db->where('id', $user_id)
+                       ->update('users', [
+                           'last_login' => date('Y-m-d H:i:s')
+                       ]);
     }
 } 

@@ -1,158 +1,157 @@
-<div class="main-panel">
-    <div class="content-wrapper">
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <div>
-                                <h4 class="card-title mb-1">Chat dengan <?= $other_user ?></h4>
-                                <p class="text-muted">
-                                    Sticker: <?= $trade->sticker_name ?> 
-                                    (<?= $trade->status ?>)
-                                </p>
-                            </div>
-                            <div>
-                                <img src="<?= base_url('assets/images/stickers/'.$trade->sticker_image) ?>" 
-                                     style="width: 60px" alt="sticker">
-                            </div>
-                        </div>
+<?php $this->load->view('templates/header', ['title' => 'Chat Pertukaran']); ?>
 
-                        <div class="chat-container" style="height: 400px; overflow-y: auto;">
-                            <div class="chat-messages">
-                                <?php foreach($messages as $msg): ?>
-                                <div class="chat-message <?= $msg->user_id == $this->session->userdata('user_id') ? 'sent' : 'received' ?> mb-3">
-                                    <div class="message-content">
-                                        <div class="message-text">
-                                            <?= htmlspecialchars($msg->message) ?>
-                                        </div>
-                                        <small class="text-muted">
-                                            <?= $msg->sender_name ?> - 
-                                            <?= time_elapsed_string($msg->created_at) ?>
-                                        </small>
-                                    </div>
+<div class="container my-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <!-- Trade Info -->
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <h4 class="mb-1">Chat Pertukaran</h4>
+                            <span class="badge bg-<?= $trade->status_class ?> px-3 py-2">
+                                <?= $trade->status_text ?>
+                            </span>
+                        </div>
+                        <a href="<?= base_url('trades') ?>" class="btn btn-outline-light">
+                            <i class="bi bi-arrow-left me-2"></i>Kembali
+                        </a>
+                    </div>
+
+                    <!-- Trade Items -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-6">
+                            <div class="card bg-dark">
+                                <div class="card-body text-center">
+                                    <small class="text-muted d-block mb-2">Stiker yang Diminta</small>
+                                    <img src="<?= base_url('uploads/stickers/' . $trade->requested_sticker_image) ?>" 
+                                         class="img-fluid rounded mb-2" style="max-height: 100px;">
+                                    <h6 class="mb-1"><?= $trade->requested_sticker_name ?></h6>
+                                    <small class="text-muted">Milik <?= $trade->owner_name ?></small>
                                 </div>
-                                <?php endforeach; ?>
                             </div>
                         </div>
-
-                        <div class="chat-input mt-3">
-                            <form id="chat-form" class="d-flex">
-                                <input type="text" class="form-control mr-2" 
-                                       id="message-input" placeholder="Ketik pesan...">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="mdi mdi-send"></i>
-                                </button>
-                            </form>
+                        <div class="col-6">
+                            <div class="card bg-dark">
+                                <div class="card-body text-center">
+                                    <small class="text-muted d-block mb-2">Stiker yang Ditawarkan</small>
+                                    <img src="<?= base_url('uploads/stickers/' . $trade->offered_sticker_image) ?>" 
+                                         class="img-fluid rounded mb-2" style="max-height: 100px;">
+                                    <h6 class="mb-1"><?= $trade->offered_sticker_name ?></h6>
+                                    <small class="text-muted">Milik <?= $trade->requester_name ?></small>
+                                </div>
+                            </div>
                         </div>
                     </div>
+
+                    <!-- Chat Area -->
+                    <div class="chat-container bg-dark rounded p-3" style="height: 400px; overflow-y: auto;">
+                        <div id="messages" class="messages">
+                            <?php foreach($messages as $message): ?>
+                                <div class="message mb-3 <?= $message->user_id == $this->session->userdata('user_id') ? 'text-end' : '' ?>">
+                                    <div class="message-content d-inline-block p-3 rounded 
+                                        <?= $message->user_id == $this->session->userdata('user_id') ? 
+                                            'bg-primary text-white' : 'bg-secondary' ?>"
+                                         style="max-width: 75%;">
+                                        <?= $message->message ?>
+                                        <div class="message-info mt-1">
+                                            <small class="text-muted">
+                                                <?= $message->username ?> • <?= time_elapsed_string($message->created_at) ?>
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+
+                    <!-- Chat Input -->
+                    <?php if($trade->status == 'pending'): ?>
+                        <form id="chatForm" class="mt-3">
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="Ketik pesan..." 
+                                       id="messageInput" required>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-send"></i>
+                                </button>
+                            </div>
+                        </form>
+                    <?php endif; ?>
+
+                    <!-- Trade Actions -->
+                    <?php if($trade->status == 'pending' && $trade->receiver_id == $this->session->userdata('user_id')): ?>
+                        <div class="d-flex justify-content-center gap-2 mt-4">
+                            <button class="btn btn-success" onclick="acceptTrade()">
+                                <i class="bi bi-check-lg me-2"></i>Terima Pertukaran
+                            </button>
+                            <button class="btn btn-danger" onclick="rejectTrade()">
+                                <i class="bi bi-x-lg me-2"></i>Tolak Pertukaran
+                            </button>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<style>
-.chat-message {
-    margin-bottom: 15px;
-}
-
-.chat-message.sent {
-    text-align: right;
-}
-
-.chat-message.sent .message-content {
-    background: #007bff;
-    color: white;
-    border-radius: 15px 15px 0 15px;
-    padding: 10px 15px;
-    display: inline-block;
-    max-width: 70%;
-}
-
-.chat-message.received .message-content {
-    background: #e9ecef;
-    border-radius: 15px 15px 15px 0;
-    padding: 10px 15px;
-    display: inline-block;
-    max-width: 70%;
-}
-
-.message-text {
-    margin-bottom: 5px;
-}
-</style>
-
 <script>
-$(document).ready(function() {
-    var chatContainer = $('.chat-container');
-    var lastMessageId = $('.chat-message').last().data('id') || 0;
-    
-    // Scroll ke bawah
-    chatContainer.scrollTop(chatContainer[0].scrollHeight);
-    
-    // Kirim pesan
-    $('#chat-form').submit(function(e) {
-        e.preventDefault();
-        var message = $('#message-input').val();
-        
-        if (message.trim() !== '') {
-            $.ajax({
-                url: '<?= base_url("chat/send_message") ?>',
-                type: 'POST',
-                data: {
-                    trade_id: <?= $trade->id ?>,
-                    message: message
-                },
-                success: function(response) {
-                    if(response.success) {
-                        $('#message-input').val('');
-                        getNewMessages();
-                    }
-                }
-            });
+const messagesContainer = document.getElementById('messages');
+const chatForm = document.getElementById('chatForm');
+const messageInput = document.getElementById('messageInput');
+
+// Scroll to bottom on load
+function scrollToBottom() {
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+scrollToBottom();
+
+// Send message
+chatForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const message = messageInput.value.trim();
+    if (!message) return;
+
+    fetch('<?= base_url('chat/send/' . $trade->id) ?>', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            messageInput.value = '';
+            location.reload(); // Temporary solution - should use WebSocket in production
         }
     });
-    
-    // Polling untuk pesan baru
-    function getNewMessages() {
-        $.ajax({
-            url: '<?= base_url("chat/get_new_messages") ?>',
-            type: 'GET',
-            data: {
-                trade_id: <?= $trade->id ?>,
-                last_id: lastMessageId
-            },
-            success: function(response) {
-                if(response.messages.length > 0) {
-                    response.messages.forEach(function(msg) {
-                        var messageHtml = createMessageHtml(msg);
-                        $('.chat-messages').append(messageHtml);
-                        lastMessageId = msg.id;
-                    });
-                    chatContainer.scrollTop(chatContainer[0].scrollHeight);
-                }
+});
+
+// Trade actions
+function acceptTrade() {
+    if(confirm('Apakah Anda yakin ingin menerima pertukaran ini?')) {
+        window.location.href = '<?= base_url('trades/accept/' . $trade->id) ?>';
+    }
+}
+
+function rejectTrade() {
+    if(confirm('Apakah Anda yakin ingin menolak pertukaran ini?')) {
+        window.location.href = '<?= base_url('trades/reject/' . $trade->id) ?>';
+    }
+}
+
+// Auto refresh chat (should use WebSocket in production)
+setInterval(() => {
+    fetch('<?= base_url('chat/get_messages/' . $trade->id) ?>')
+        .then(response => response.json())
+        .then(data => {
+            if (data.messages) {
+                // Update messages
+                location.reload();
             }
         });
-    }
-    
-    function createMessageHtml(msg) {
-        var isOwn = msg.user_id == <?= $this->session->userdata('user_id') ?>;
-        return `
-            <div class="chat-message ${isOwn ? 'sent' : 'received'} mb-3" data-id="${msg.id}">
-                <div class="message-content">
-                    <div class="message-text">
-                        ${msg.message}
-                    </div>
-                    <small class="text-muted">
-                        ${msg.sender_name} - baru saja
-                    </small>
-                </div>
-            </div>
-        `;
-    }
-    
-    // Polling setiap 5 detik
-    setInterval(getNewMessages, 5000);
-});
-</script> 
+}, 5000);
+</script>
+
+<?php $this->load->view('templates/footer'); ?> 

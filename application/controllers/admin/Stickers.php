@@ -1,202 +1,114 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Stickers extends CI_Controller {
+class Stickers extends MY_Controller {
     
     public function __construct() {
         parent::__construct();
-        $this->load->model('sticker_model');
-        $this->load->library(['session', 'form_validation', 'upload']);
-        $this->load->helper(['url', 'file']);
-        
-        if (!$this->session->userdata('logged_in') || !$this->session->userdata('is_admin')) {
-            redirect('auth/login');
-        }
+        $this->check_admin();
+        $this->load->library(['upload', 'image_lib']);
     }
-
-    public function index() {
-        $data['title'] = 'Manajemen Sticker';
-        $data['stickers'] = $this->sticker_model->get_all_stickers();
-        
-        $this->load->view('admin/templates/header', $data);
-        $this->load->view('admin/templates/sidebar');
-        $this->load->view('admin/stickers/index');
-        $this->load->view('admin/templates/footer');
-    }
-
-    public function add() {
-        $data['title'] = 'Tambah Sticker';
-        $data['categories'] = $this->sticker_model->get_categories();
-        
-        $this->form_validation->set_rules('name', 'Nama Sticker', 'required|is_unique[stickers.name]');
-        $this->form_validation->set_rules('category_id', 'Kategori', 'required');
-        $this->form_validation->set_rules('description', 'Deskripsi', 'required');
-        
-        if ($this->form_validation->run()) {
-            // Konfigurasi upload gambar
-            $config['upload_path'] = './assets/images/stickers/';
-            $config['allowed_types'] = 'gif|jpg|jpeg|png';
-            $config['max_size'] = 2048; // 2MB
-            $config['encrypt_name'] = TRUE;
-            
-            $this->upload->initialize($config);
-            
-            if ($this->upload->do_upload('image')) {
-                $upload_data = $this->upload->data();
-                
-                $data = [
-                    'name' => $this->input->post('name'),
-                    'category_id' => $this->input->post('category_id'),
-                    'description' => $this->input->post('description'),
-                    'image' => $upload_data['file_name'],
-                    'created_at' => date('Y-m-d H:i:s')
-                ];
-                
-                $result = $this->sticker_model->add_sticker($data);
-                
-                if ($result) {
-                    $this->session->set_flashdata('success', 'Sticker berhasil ditambahkan');
-                    redirect('admin/stickers');
-                }
-            } else {
-                $this->session->set_flashdata('error', $this->upload->display_errors());
-            }
+    
+    public function add($category_id) {
+        // Validasi category_id
+        $category = $this->sticker_model->get_category($category_id);
+        if(!$category) {
+            show_404();
+            return;
         }
         
-        $this->load->view('admin/templates/header', $data);
-        $this->load->view('admin/templates/sidebar');
-        $this->load->view('admin/stickers/form');
-        $this->load->view('admin/templates/footer');
-    }
-
-    public function edit($id) {
-        $sticker = $this->sticker_model->get_sticker($id);
-        if (!$sticker) show_404();
+        // Konfigurasi upload
+        $config['upload_path'] = './uploads/stickers/';
+        $config['allowed_types'] = 'gif|jpg|png|jpeg';
+        $config['max_size'] = 2048; // 2MB
+        $config['encrypt_name'] = TRUE;
         
-        $data['title'] = 'Edit Sticker';
-        $data['sticker'] = $sticker;
-        $data['categories'] = $this->sticker_model->get_categories();
-        
-        $this->form_validation->set_rules('name', 'Nama Sticker', 'required');
-        $this->form_validation->set_rules('category_id', 'Kategori', 'required');
-        $this->form_validation->set_rules('description', 'Deskripsi', 'required');
-        
-        if ($this->form_validation->run()) {
-            $update_data = [
-                'name' => $this->input->post('name'),
-                'category_id' => $this->input->post('category_id'),
-                'description' => $this->input->post('description'),
-                'updated_at' => date('Y-m-d H:i:s')
-            ];
-            
-            // Jika ada upload gambar baru
-            if ($_FILES['image']['name']) {
-                $config['upload_path'] = './assets/images/stickers/';
-                $config['allowed_types'] = 'gif|jpg|jpeg|png';
-                $config['max_size'] = 2048;
-                $config['encrypt_name'] = TRUE;
-                
-                $this->upload->initialize($config);
-                
-                if ($this->upload->do_upload('image')) {
-                    // Hapus gambar lama
-                    if ($sticker->image && file_exists('./assets/images/stickers/'.$sticker->image)) {
-                        unlink('./assets/images/stickers/'.$sticker->image);
-                    }
-                    
-                    $upload_data = $this->upload->data();
-                    $update_data['image'] = $upload_data['file_name'];
-                } else {
-                    $this->session->set_flashdata('error', $this->upload->display_errors());
-                    redirect('admin/stickers/edit/'.$id);
-                }
-            }
-            
-            $result = $this->sticker_model->update_sticker($id, $update_data);
-            
-            if ($result) {
-                $this->session->set_flashdata('success', 'Sticker berhasil diperbarui');
-                redirect('admin/stickers');
-            }
+        // Buat direktori jika belum ada
+        if (!is_dir($config['upload_path'])) {
+            mkdir($config['upload_path'], 0777, TRUE);
         }
         
-        $this->load->view('admin/templates/header', $data);
-        $this->load->view('admin/templates/sidebar');
-        $this->load->view('admin/stickers/form');
-        $this->load->view('admin/templates/footer');
-    }
-
-    public function delete($id) {
-        if (!$this->input->is_ajax_request()) {
-            exit('No direct script access allowed');
-        }
-
-        $sticker = $this->sticker_model->get_sticker($id);
+        $this->load->library('upload', $config);
         
-        if ($sticker) {
-            // Hapus gambar
-            if ($sticker->image && file_exists('./assets/images/stickers/'.$sticker->image)) {
-                unlink('./assets/images/stickers/'.$sticker->image);
-            }
-            
-            $result = $this->sticker_model->delete_sticker($id);
-            echo json_encode(['success' => $result]);
+        if(!$this->upload->do_upload('image')) {
+            $this->session->set_flashdata('error', $this->upload->display_errors());
+            redirect('admin/categories/view/'.$category_id);
+            return;
+        }
+        
+        $upload_data = $this->upload->data();
+        
+        // Generate image hash
+        $image_hash = md5_file($upload_data['full_path']);
+        
+        // Cek duplikasi stiker
+        $existing_sticker = $this->sticker_model->get_sticker_by_hash($image_hash);
+        if($existing_sticker) {
+            unlink($upload_data['full_path']); // Hapus file yang baru diupload
+            $this->session->set_flashdata('error', 'Stiker ini sudah ada dalam database');
+            redirect('admin/categories/view/'.$category_id);
+            return;
+        }
+        
+        // Dapatkan nomor terakhir untuk kategori ini
+        $last_number = $this->db->where('category_id', $category_id)
+                               ->order_by('number', 'DESC')
+                               ->limit(1)
+                               ->get('stickers')
+                               ->row();
+        $next_number = $last_number ? $last_number->number + 1 : 1;
+        
+        // Simpan data stiker
+        $sticker_data = array(
+            'category_id' => $category_id,
+            'number' => $next_number,
+            'image_path' => $upload_data['file_name'],
+            'image_hash' => $image_hash,
+            'created_at' => date('Y-m-d H:i:s')
+        );
+        
+        if($this->sticker_model->add_sticker($sticker_data)) {
+            $this->session->set_flashdata('success', 'Stiker berhasil ditambahkan');
         } else {
-            echo json_encode(['success' => false]);
+            unlink($upload_data['full_path']); // Hapus file jika gagal simpan
+            $this->session->set_flashdata('error', 'Gagal menambahkan stiker');
         }
+        
+        redirect('admin/categories/view/'.$category_id);
     }
-
-    public function bulk_upload() {
-        if ($this->input->post('submit')) {
-            $config['upload_path'] = './assets/temp/';
-            $config['allowed_types'] = 'xlsx|xls';
-            $config['max_size'] = 2048;
-            
-            $this->upload->initialize($config);
-            
-            if ($this->upload->do_upload('excel_file')) {
-                $upload_data = $this->upload->data();
-                
-                // Proses file Excel
-                require_once APPPATH . 'third_party/PHPExcel/PHPExcel.php';
-                
-                $file = $upload_data['full_path'];
-                $objPHPExcel = PHPExcel_IOFactory::load($file);
-                $sheet = $objPHPExcel->getActiveSheet()->toArray(null, true, true, true);
-                
-                $success = 0;
-                $failed = 0;
-                
-                // Mulai dari baris kedua (header di baris pertama)
-                for ($i = 2; $i <= count($sheet); $i++) {
-                    $data = [
-                        'name' => $sheet[$i]['A'],
-                        'category_id' => $sheet[$i]['B'],
-                        'description' => $sheet[$i]['C'],
-                        'created_at' => date('Y-m-d H:i:s')
-                    ];
-                    
-                    if ($this->sticker_model->add_sticker($data)) {
-                        $success++;
-                    } else {
-                        $failed++;
-                    }
-                }
-                
-                unlink($file);
-                
-                $this->session->set_flashdata('success', "Berhasil mengimpor $success sticker. Gagal: $failed");
-                redirect('admin/stickers');
-            } else {
-                $this->session->set_flashdata('error', $this->upload->display_errors());
-            }
+    
+    public function delete($id) {
+        $sticker = $this->sticker_model->get_sticker($id);
+        if(!$sticker) {
+            show_404();
+            return;
         }
         
-        $data['title'] = 'Import Sticker';
+        $collection_id = $sticker->collection_id;
         
-        $this->load->view('admin/templates/header', $data);
-        $this->load->view('admin/templates/sidebar');
-        $this->load->view('admin/stickers/bulk_upload');
-        $this->load->view('admin/templates/footer');
+        if($this->sticker_model->delete_sticker($id)) {
+            // Hapus file gambar
+            $image_path = './uploads/stickers/'.$sticker->image_path;
+            if(file_exists($image_path)) {
+                unlink($image_path);
+            }
+            
+            $this->session->set_flashdata('success', 'Stiker berhasil dihapus');
+        } else {
+            $this->session->set_flashdata('error', 'Gagal menghapus stiker');
+        }
+        
+        redirect('admin/collections/edit/'.$collection_id);
+    }
+    
+    private function resize_image($path) {
+        $config['image_library'] = 'gd2';
+        $config['source_image'] = $path;
+        $config['maintain_ratio'] = TRUE;
+        $config['width'] = 800; // Maksimal lebar
+        $config['height'] = 800; // Maksimal tinggi
+        
+        $this->image_lib->initialize($config);
+        $this->image_lib->resize();
     }
 } 

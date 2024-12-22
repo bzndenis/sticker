@@ -1,188 +1,141 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Users extends CI_Controller {
+class Users extends MY_Controller {
     
     public function __construct() {
         parent::__construct();
-        $this->load->model(['user_model', 'sticker_model', 'trade_model']);
-        $this->load->library(['session', 'form_validation']);
-        $this->load->helper('url');
-        
-        if (!$this->session->userdata('logged_in') || !$this->session->userdata('is_admin')) {
-            redirect('auth/login');
-        }
+        $this->check_admin();
     }
-
+    
     public function index() {
-        $data['title'] = 'Manajemen User';
-        $data['users'] = $this->user_model->get_all_users_with_stats();
-        
-        $this->load->view('admin/templates/header', $data);
-        $this->load->view('admin/templates/sidebar');
-        $this->load->view('admin/users/index');
-        $this->load->view('admin/templates/footer');
+        $data['users'] = $this->user_model->get_all_users();
+        $this->load->view('admin/users/index', $data);
     }
-
-    public function view($id) {
-        $user = $this->user_model->get_user_detail($id);
-        if (!$user) show_404();
+    
+    public function search() {
+        $keyword = $this->input->get('keyword');
+        $status = $this->input->get('status');
+        $sort = $this->input->get('sort');
         
-        $data['title'] = 'Detail User';
-        $data['user'] = $user;
-        $data['stats'] = [
-            'total_stickers' => $this->sticker_model->count_owned_stickers($id),
-            'total_trades' => $this->trade_model->count_total_trades($id),
-            'success_trades' => $this->trade_model->count_success_trades($id)
-        ];
-        $data['recent_trades'] = $this->trade_model->get_recent_trades($id, 5);
-        $data['owned_stickers'] = $this->sticker_model->get_user_stickers($id);
+        $data['users'] = $this->user_model->search_users($keyword, $status, $sort);
+        $data['keyword'] = $keyword;
+        $data['status'] = $status;
+        $data['sort'] = $sort;
         
-        $this->load->view('admin/templates/header', $data);
-        $this->load->view('admin/templates/sidebar');
-        $this->load->view('admin/users/view');
-        $this->load->view('admin/templates/footer');
+        $this->load->view('admin/users/index', $data);
     }
-
-    public function edit($id) {
-        $user = $this->user_model->get_user_detail($id);
-        if (!$user) show_404();
-        
-        $this->form_validation->set_rules('username', 'Username', 'required|min_length[4]');
-        $this->form_validation->set_rules('email', 'Email', 'required|valid_email');
-        
-        if ($this->input->post('password')) {
-            $this->form_validation->set_rules('password', 'Password', 'min_length[6]');
-            $this->form_validation->set_rules('confirm_password', 'Konfirmasi Password', 'matches[password]');
+    
+    public function toggle_status($id) {
+        if($this->user_model->toggle_status($id)) {
+            $this->session->set_flashdata('success', 'Status pengguna berhasil diubah');
+        } else {
+            $this->session->set_flashdata('error', 'Gagal mengubah status pengguna');
         }
         
-        if ($this->form_validation->run()) {
-            $update_data = [
-                'username' => $this->input->post('username'),
-                'email' => $this->input->post('email'),
-                'is_active' => $this->input->post('is_active') ? 1 : 0,
-                'is_admin' => $this->input->post('is_admin') ? 1 : 0
-            ];
-            
-            if ($this->input->post('password')) {
-                $update_data['password'] = password_hash($this->input->post('password'), PASSWORD_DEFAULT);
-            }
-            
-            $result = $this->user_model->update_user($id, $update_data);
-            
-            if ($result) {
-                $this->session->set_flashdata('success', 'Data user berhasil diperbarui');
-                redirect('admin/users');
-            }
-        }
-        
-        $data['title'] = 'Edit User';
-        $data['user'] = $user;
-        
-        $this->load->view('admin/templates/header', $data);
-        $this->load->view('admin/templates/sidebar');
-        $this->load->view('admin/users/edit');
-        $this->load->view('admin/templates/footer');
+        redirect('admin/users');
     }
-
+    
     public function delete($id) {
-        if (!$this->input->is_ajax_request()) {
-            exit('No direct script access allowed');
+        if($this->user_model->delete_user($id)) {
+            $this->session->set_flashdata('success', 'Pengguna berhasil dihapus');
+        } else {
+            $this->session->set_flashdata('error', 'Gagal menghapus pengguna');
         }
-
-        // Cek apakah user memiliki pertukaran aktif
-        $active_trades = $this->trade_model->count_active_trades($id);
         
-        if ($active_trades > 0) {
-            echo json_encode([
-                'success' => false,
-                'message' => 'User masih memiliki '.$active_trades.' pertukaran aktif'
-            ]);
+        redirect('admin/users');
+    }
+    
+    public function export() {
+        $format = $this->input->post('format');
+        $fields = $this->input->post('fields');
+        
+        if(!$format || !$fields) {
+            $this->session->set_flashdata('error', 'Parameter export tidak valid');
+            redirect('admin/users');
             return;
         }
         
-        // Hapus data user
-        $result = $this->user_model->delete_user($id);
-        echo json_encode(['success' => $result]);
-    }
-
-    public function ban($id) {
-        if (!$this->input->is_ajax_request()) {
-            exit('No direct script access allowed');
+        $users = $this->user_model->get_users_for_export($fields);
+        $filename = 'users_export_' . date('Y-m-d_His');
+        
+        if($format === 'csv') {
+            $this->export_to_csv($users, $fields, $filename);
+        } else if($format === 'excel') {
+            $this->export_to_excel($users, $fields, $filename);
+        } else {
+            $this->session->set_flashdata('error', 'Format file tidak valid');
+            redirect('admin/users');
         }
-
-        $duration = $this->input->post('duration'); // dalam hari
-        $reason = $this->input->post('reason');
-        
-        $ban_data = [
-            'user_id' => $id,
-            'reason' => $reason,
-            'banned_until' => date('Y-m-d H:i:s', strtotime("+$duration days")),
-            'banned_by' => $this->session->userdata('user_id'),
-            'created_at' => date('Y-m-d H:i:s')
-        ];
-        
-        $result = $this->user_model->ban_user($id, $ban_data);
-        echo json_encode(['success' => $result]);
     }
-
-    public function unban($id) {
-        if (!$this->input->is_ajax_request()) {
-            exit('No direct script access allowed');
+    
+    private function export_to_csv($data, $fields, $filename) {
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="'.$filename.'.csv"');
+        
+        $output = fopen('php://output', 'w');
+        
+        // Header baris pertama
+        $header = array_map(function($field) {
+            return ucwords(str_replace('_', ' ', $field));
+        }, $fields);
+        fputcsv($output, $header);
+        
+        // Data
+        foreach($data as $row) {
+            $line = array_map(function($field) use ($row) {
+                if($field === 'created_at' || $field === 'last_login') {
+                    return $row->$field ? date('d M Y H:i', strtotime($row->$field)) : '-';
+                }
+                return $row->$field;
+            }, $fields);
+            fputcsv($output, $line);
         }
-
-        $result = $this->user_model->unban_user($id);
-        echo json_encode(['success' => $result]);
-    }
-
-    public function export_users() {
-        $users = $this->user_model->get_all_users_with_stats();
         
-        // Load library Excel
+        fclose($output);
+        exit;
+    }
+    
+    private function export_to_excel($data, $fields, $filename) {
         require_once APPPATH . 'third_party/PHPExcel/PHPExcel.php';
         
-        $objPHPExcel = new PHPExcel();
+        $excel = new PHPExcel();
+        $excel->setActiveSheetIndex(0);
+        $sheet = $excel->getActiveSheet();
         
-        // Set properties
-        $objPHPExcel->getProperties()
-                    ->setCreator("Admin")
-                    ->setTitle("Data Users")
-                    ->setDescription("Daftar semua user");
+        // Header
+        $col = 0;
+        foreach($fields as $field) {
+            $sheet->setCellValueByColumnAndRow($col, 1, ucwords(str_replace('_', ' ', $field)));
+            $col++;
+        }
         
-        // Add header
-        $objPHPExcel->setActiveSheetIndex(0)
-                    ->setCellValue('A1', 'Username')
-                    ->setCellValue('B1', 'Email')
-                    ->setCellValue('C1', 'Total Sticker')
-                    ->setCellValue('D1', 'Total Trade')
-                    ->setCellValue('E1', 'Status')
-                    ->setCellValue('F1', 'Tanggal Bergabung');
-        
-        // Add data
+        // Data
         $row = 2;
-        foreach($users as $user) {
-            $objPHPExcel->setActiveSheetIndex(0)
-                        ->setCellValue('A'.$row, $user->username)
-                        ->setCellValue('B'.$row, $user->email)
-                        ->setCellValue('C'.$row, $user->total_stickers)
-                        ->setCellValue('D'.$row, $user->total_trades)
-                        ->setCellValue('E'.$row, $user->is_active ? 'Aktif' : 'Nonaktif')
-                        ->setCellValue('F'.$row, date('d/m/Y', strtotime($user->created_at)));
+        foreach($data as $item) {
+            $col = 0;
+            foreach($fields as $field) {
+                $value = $item->$field;
+                if($field === 'created_at' || $field === 'last_login') {
+                    $value = $value ? date('d M Y H:i', strtotime($value)) : '-';
+                }
+                $sheet->setCellValueByColumnAndRow($col, $row, $value);
+                $col++;
+            }
             $row++;
         }
         
-        // Set column width
-        foreach(range('A','F') as $column) {
-            $objPHPExcel->getActiveSheet()->getColumnDimension($column)->setAutoSize(true);
+        // Auto-size kolom
+        foreach(range(0, count($fields)-1) as $col) {
+            $sheet->getColumnDimensionByColumn($col)->setAutoSize(true);
         }
         
-        // Set header
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="data_users_'.date('Y-m-d').'.xlsx"');
+        header('Content-Disposition: attachment;filename="'.$filename.'.xlsx"');
         header('Cache-Control: max-age=0');
         
-        $objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel, 'Excel2007');
-        $objWriter->save('php://output');
+        $writer = PHPExcel_IOFactory::createWriter($excel, 'Excel2007');
+        $writer->save('php://output');
         exit;
     }
 } 

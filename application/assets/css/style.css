@@ -1,0 +1,12 @@
+.notification-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    transform: translate(50%, -50%);
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.nav-item {
+    position: relative;
+} 

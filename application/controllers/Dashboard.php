@@ -1,49 +1,122 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Dashboard extends CI_Controller {
+class Dashboard extends MY_Controller {
     
     public function __construct() {
         parent::__construct();
-        $this->load->model(['sticker_model', 'trade_model']);
-        $this->load->library('session');
-        $this->load->helper(['url', 'trade']);
-        
-        if (!$this->session->userdata('logged_in')) {
-            redirect('auth/login');
-        }
+        $this->load->model(['sticker_model', 'trade_model', 'collection_model']);
     }
-
+    
     public function index() {
-        $user_id = $this->session->userdata('user_id');
+        $this->check_login();
         
-        $data['title'] = 'Dashboard';
-        $data['stats'] = [
-            'total_stickers' => $this->sticker_model->count_all_stickers(),
-            'owned_stickers' => $this->sticker_model->count_owned_stickers($user_id),
-            'tradeable_stickers' => $this->sticker_model->count_tradeable_stickers($user_id),
-            'pending_trades' => $this->trade_model->count_pending_trades($user_id)
+        $data = [
+            'title' => 'Dashboard',
+            'unread_notifications' => $this->notification_model->get_unread_notifications_count($this->user_id),
+            
+            // Total stiker yang dimiliki user
+            'total_stickers' => $this->sticker_model->count_user_stickers($this->user_id),
+            
+            // Total pertukaran yang dilakukan
+            'total_trades' => $this->trade_model->count_user_trades($this->user_id),
+            
+            // Data koleksi
+            'total_collections' => $this->collection_model->count_user_collections($this->user_id),
+            'collections' => $this->collection_model->get_user_collections($this->user_id),
+            
+            // Hitung progress koleksi keseluruhan
+            'collection_progress' => $this->collection_model->calculate_total_progress($this->user_id)
         ];
         
-        $data['recent_activities'] = $this->sticker_model->get_recent_activities($user_id, 5);
-        $data['category_progress'] = $this->sticker_model->get_category_progress($user_id);
-        $data['trade_history'] = $this->trade_model->get_recent_trades($user_id, 5);
-        
         $this->load->view('templates/header', $data);
-        $this->load->view('templates/sidebar');
-        $this->load->view('dashboard/index');
+        $this->load->view('templates/navbar');
+        $this->load->view('dashboard/index', $data);
         $this->load->view('templates/footer');
     }
-
-    public function get_notifications() {
-        if (!$this->input->is_ajax_request()) {
-            exit('No direct script access allowed');
+    
+    public function get_chart_data() {
+        if(!$this->input->is_ajax_request()) {
+            show_404();
+            return;
+        }
+        
+        $user_id = $this->session->userdata('user_id');
+        $period = $this->input->get('period') ?: 'monthly';
+        
+        // Validasi period
+        if(!in_array($period, ['daily', 'weekly', 'monthly'])) {
+            $period = 'monthly';
+        }
+        
+        // Get data untuk chart
+        $sticker_data = $this->sticker_model->get_user_stickers_chart($user_id, $period);
+        $trade_data = $this->trade_model->get_trades_chart($user_id, $period);
+        
+        // Format data untuk chart
+        $formatted_data = [
+            'labels' => [],
+            'stickers' => [],
+            'trades' => []
+        ];
+        
+        // Format sticker data
+        foreach($sticker_data as $item) {
+            $formatted_data['labels'][] = $this->format_period_label($item->period, $period);
+            $formatted_data['stickers'][] = (int)$item->total;
+        }
+        
+        // Format trade data
+        foreach($trade_data as $item) {
+            if(!in_array($this->format_period_label($item->period, $period), $formatted_data['labels'])) {
+                $formatted_data['labels'][] = $this->format_period_label($item->period, $period);
+            }
+            $formatted_data['trades'][] = (int)$item->total;
+        }
+        
+        // Sort labels chronologically
+        sort($formatted_data['labels']);
+        
+        $this->output->set_content_type('application/json');
+        echo json_encode([
+            'success' => true,
+            'data' => $formatted_data
+        ]);
+    }
+    
+    private function format_period_label($period, $type) {
+        switch($type) {
+            case 'daily':
+                return date('d M', strtotime($period));
+            case 'weekly':
+                $year = substr($period, 0, 4);
+                $week = substr($period, -2);
+                $dto = new DateTime();
+                $dto->setISODate($year, $week);
+                return $dto->format('d M');
+            case 'monthly':
+                return date('M Y', strtotime($period . '-01'));
+            default:
+                return $period;
+        }
+    }
+    
+    private function calculate_collection_progress($user_id) {
+        $collections = $this->collection_model->get_user_collections($user_id);
+        if (empty($collections)) {
+            return 0;
         }
 
-        $user_id = $this->session->userdata('user_id');
-        $this->load->model('notification_model');
-        
-        $notifications = $this->notification_model->get_unread_notifications($user_id);
-        echo json_encode(['notifications' => $notifications]);
+        $total_progress = 0;
+        foreach ($collections as $collection) {
+            $owned_stickers = $this->sticker_model->count_collection_stickers($collection->id, $user_id);
+            $total_stickers = $collection->total_stickers;
+            
+            if ($total_stickers > 0) {
+                $total_progress += ($owned_stickers / $total_stickers) * 100;
+            }
+        }
+
+        return number_format($total_progress / count($collections), 1);
     }
 } 

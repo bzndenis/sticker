@@ -1,142 +1,134 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Reports extends CI_Controller {
+class Reports extends MY_Controller {
     
     public function __construct() {
         parent::__construct();
-        $this->load->model(['report_model', 'user_model']);
-        $this->load->library(['session', 'form_validation']);
-        $this->load->helper('url');
-        
-        if (!$this->session->userdata('logged_in') || !$this->session->userdata('is_admin')) {
-            redirect('auth/login');
-        }
+        $this->check_admin();
     }
-
+    
     public function index() {
-        $data['title'] = 'Manajemen Laporan';
-        $data['reports'] = $this->report_model->get_all_reports();
+        $period = $this->input->get('period') ?: 'monthly';
+        $start_date = $this->input->get('start_date') ?: date('Y-m-d', strtotime('-1 year'));
+        $end_date = $this->input->get('end_date') ?: date('Y-m-d');
         
-        $this->load->view('admin/templates/header', $data);
-        $this->load->view('admin/templates/sidebar');
-        $this->load->view('admin/reports/index');
-        $this->load->view('admin/templates/footer');
+        // Statistik umum
+        $data['total_users'] = $this->user_model->count_users();
+        $data['total_collections'] = $this->sticker_model->count_collections();
+        $data['total_stickers'] = $this->sticker_model->count_stickers();
+        $data['total_trades'] = $this->trade_model->count_trades();
+        
+        // Laporan pengguna baru
+        $data['new_users'] = $this->user_model->get_new_users_report($period);
+        
+        // Laporan pengguna aktif
+        $data['active_users'] = $this->user_model->get_active_users_report($period);
+        
+        // Laporan pertukaran
+        $data['trades'] = $this->trade_model->get_trades_report($start_date, $end_date, $period);
+        
+        // Progress koleksi pengguna
+        $data['collection_progress'] = $this->user_model->get_collection_progress_report();
+        
+        // Parameter laporan
+        $data['period'] = $period;
+        $data['start_date'] = $start_date;
+        $data['end_date'] = $end_date;
+        
+        $this->load->view('admin/reports/index', $data);
     }
-
-    public function view($id) {
-        $report = $this->report_model->get_report_detail($id);
-        if (!$report) show_404();
+    
+    public function export_users() {
+        $format = $this->input->post('format');
+        $fields = $this->input->post('fields');
         
-        // Update status menjadi 'read' jika masih 'new'
-        if ($report->status == 'new') {
-            $this->report_model->update_report($id, ['status' => 'read']);
-        }
-        
-        $data['title'] = 'Detail Laporan';
-        $data['report'] = $report;
-        
-        $this->load->view('admin/templates/header', $data);
-        $this->load->view('admin/templates/sidebar');
-        $this->load->view('admin/reports/view');
-        $this->load->view('admin/templates/footer');
-    }
-
-    public function process($id) {
-        if (!$this->input->is_ajax_request()) {
-            exit('No direct script access allowed');
-        }
-
-        $this->form_validation->set_rules('response', 'Tanggapan', 'required');
-        $this->form_validation->set_rules('action_taken', 'Tindakan', 'required');
-        
-        if ($this->form_validation->run()) {
-            $data = [
-                'response' => $this->input->post('response'),
-                'action_taken' => $this->input->post('action_taken'),
-                'processed_by' => $this->session->userdata('user_id'),
-                'processed_at' => date('Y-m-d H:i:s'),
-                'status' => 'processed'
-            ];
-            
-            $result = $this->report_model->update_report($id, $data);
-            
-            if ($result) {
-                // Jika ada tindakan ban user
-                if ($this->input->post('ban_user')) {
-                    $report = $this->report_model->get_report($id);
-                    $ban_data = [
-                        'user_id' => $report->reported_user_id,
-                        'reason' => 'Banned berdasarkan laporan #'.$id.': '.$this->input->post('ban_reason'),
-                        'duration' => $this->input->post('ban_duration'),
-                        'banned_by' => $this->session->userdata('user_id'),
-                        'banned_until' => date('Y-m-d H:i:s', strtotime('+'.$this->input->post('ban_duration').' days'))
-                    ];
-                    $this->user_model->ban_user($report->reported_user_id, $ban_data);
-                }
-                
-                echo json_encode(['success' => true]);
-                return;
-            }
-        }
-        
-        echo json_encode([
-            'success' => false,
-            'message' => validation_errors()
-        ]);
-    }
-
-    public function delete($id) {
-        if (!$this->input->is_ajax_request()) {
-            exit('No direct script access allowed');
-        }
-
-        $result = $this->report_model->delete_report($id);
-        echo json_encode(['success' => $result]);
-    }
-
-    public function bulk_action() {
-        if (!$this->input->is_ajax_request()) {
-            exit('No direct script access allowed');
-        }
-
-        $ids = $this->input->post('ids');
-        $action = $this->input->post('action');
-        
-        if (!$ids || !$action) {
-            echo json_encode([
-                'success' => false,
-                'message' => 'Parameter tidak lengkap'
-            ]);
+        if(!$format || !$fields) {
+            $this->session->set_flashdata('error', 'Parameter export tidak valid');
+            redirect('admin/users');
             return;
         }
         
-        $success = 0;
-        $failed = 0;
+        $users = $this->user_model->get_users_for_export($fields);
+        $filename = 'users_export_' . date('Y-m-d_His');
         
-        foreach ($ids as $id) {
-            switch ($action) {
-                case 'mark_read':
-                    if ($this->report_model->update_report($id, ['status' => 'read'])) {
-                        $success++;
-                    } else {
-                        $failed++;
-                    }
-                    break;
-                    
-                case 'delete':
-                    if ($this->report_model->delete_report($id)) {
-                        $success++;
-                    } else {
-                        $failed++;
-                    }
-                    break;
-            }
+        if($format === 'csv') {
+            $this->export_to_csv($users, $fields, $filename);
+        } else if($format === 'excel') {
+            $this->export_to_excel($users, $fields, $filename);
+        } else {
+            $this->session->set_flashdata('error', 'Format file tidak valid');
+            redirect('admin/users');
+        }
+    }
+    
+    private function export_to_csv($data, $fields, $filename) {
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="'.$filename.'.csv"');
+        
+        $output = fopen('php://output', 'w');
+        
+        // Header baris pertama
+        $header = array_map(function($field) {
+            return ucwords(str_replace('_', ' ', $field));
+        }, $fields);
+        fputcsv($output, $header);
+        
+        // Data
+        foreach($data as $row) {
+            $line = array_map(function($field) use ($row) {
+                if($field === 'created_at' || $field === 'last_login') {
+                    return $row->$field ? date('d M Y H:i', strtotime($row->$field)) : '-';
+                }
+                return $row->$field;
+            }, $fields);
+            fputcsv($output, $line);
         }
         
-        echo json_encode([
-            'success' => true,
-            'message' => "Berhasil: $success, Gagal: $failed"
-        ]);
+        fclose($output);
+        exit;
+    }
+    
+    private function export_to_excel($data, $fields, $filename) {
+        require_once APPPATH . 'third_party/PHPExcel/PHPExcel.php';
+        
+        $excel = new PHPExcel();
+        $excel->setActiveSheetIndex(0);
+        $sheet = $excel->getActiveSheet();
+        
+        // Header
+        $col = 0;
+        foreach($fields as $field) {
+            $sheet->setCellValueByColumnAndRow($col, 1, ucwords(str_replace('_', ' ', $field)));
+            $col++;
+        }
+        
+        // Data
+        $row = 2;
+        foreach($data as $item) {
+            $col = 0;
+            foreach($fields as $field) {
+                $value = $item->$field;
+                if($field === 'created_at' || $field === 'last_login') {
+                    $value = $value ? date('d M Y H:i', strtotime($value)) : '-';
+                }
+                $sheet->setCellValueByColumnAndRow($col, $row, $value);
+                $col++;
+            }
+            $row++;
+        }
+        
+        // Auto-size kolom
+        foreach(range(0, count($fields)-1) as $col) {
+            $sheet->getColumnDimensionByColumn($col)->setAutoSize(true);
+        }
+        
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="'.$filename.'.xlsx"');
+        header('Cache-Control: max-age=0');
+        
+        $writer = PHPExcel_IOFactory::createWriter($excel, 'Excel2007');
+        $writer->save('php://output');
+        exit;
     }
 } 
