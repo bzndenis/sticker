@@ -50,7 +50,7 @@
                                 <li class="mb-2"><i class="bi bi-x-circle me-2"></i>Menyebarkan konten ilegal atau berbahaya</li>
                                 <li class="mb-2"><i class="bi bi-x-circle me-2"></i>Melakukan penipuan atau aktivitas ilegal</li>
                                 <li class="mb-2"><i class="bi bi-x-circle me-2"></i>Menggunakan bot atau otomatisasi</li>
-                                <li class="mb-2"><i class="bi bi-x-circle me-2"></i>Menjual atau membeli stiker dengan uang</li>
+                                <!-- <li class="mb-2"><i class="bi bi-x-circle me-2"></i>Menjual atau membeli stiker dengan uang</li> -->
                             </ul>
                         </div>
                     </div>

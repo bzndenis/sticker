@@ -47,10 +47,10 @@
                 <div class="col-lg-2 col-md-4">
                     <h6 class="mb-3">Bantuan</h6>
                     <ul class="list-unstyled footer-links">
-                        <li><a href="<?= base_url('faq') ?>">FAQ</a></li>
-                        <li><a href="<?= base_url('guide') ?>">Panduan</a></li>
-                        <li><a href="<?= base_url('contact') ?>">Kontak</a></li>
-                        <li><a href="<?= base_url('report') ?>">Laporkan Bug</a></li>
+                        <li><a href="<?= base_url('help') ?>">FAQ</a></li>
+                        <li><a href="<?= base_url('guide/getting-started') ?>">Panduan</a></li>
+                        <li><a href="<?= base_url('help') ?>">Kontak</a></li>
+                        <li><a href="<?= base_url('help') ?>">Laporkan Bug</a></li>
                     </ul>
                 </div>
 
@@ -58,27 +58,27 @@
                 <div class="col-lg-2 col-md-4">
                     <h6 class="mb-3">Legal</h6>
                     <ul class="list-unstyled footer-links">
-                        <li><a href="<?= base_url('terms') ?>">Ketentuan</a></li>
-                        <li><a href="<?= base_url('privacy') ?>">Privasi</a></li>
-                        <li><a href="<?= base_url('cookies') ?>">Cookies</a></li>
-                        <li><a href="<?= base_url('license') ?>">Lisensi</a></li>
+                        <li><a href="<?= base_url('legal/terms') ?>">Ketentuan</a></li>
+                        <li><a href="<?= base_url('legal/privacy') ?>">Privasi</a></li>
+                        <li><a href="<?= base_url('legal/cookies') ?>">Cookies</a></li>
+                        <li><a href="<?= base_url('legal/license') ?>">Lisensi</a></li>
                     </ul>
                 </div>
 
                 <!-- Newsletter -->
                 <div class="col-lg-2">
-                    <h6 class="mb-3">Newsletter</h6>
+                    <h6 class="mb-3">Support</h6>
                     <p class="text-muted small mb-3">
-                        Dapatkan update terbaru tentang koleksi dan fitur baru.
+                        Dukung pengembangan aplikasi ini melalui:
                     </p>
-                    <form class="newsletter-form">
-                        <div class="input-group">
-                            <input type="email" class="form-control" placeholder="Email kamu">
-                            <button class="btn btn-primary" type="submit">
-                                <i class="bi bi-send"></i>
-                            </button>
-                        </div>
-                    </form>
+                    <div class="d-flex flex-column gap-2">
+                        <a href="https://github.com/bzndenis/sticker" class="btn btn-outline-light btn-sm">
+                            <i class="bi bi-github me-2"></i>GitHub
+                        </a>
+                        <a href="https://saweria.co/bzndenis" class="btn btn-outline-warning btn-sm">
+                            <i class="bi bi-heart-fill me-2"></i>Saweria
+                        </a>
+                    </div>
                 </div>
             </div>
 
@@ -93,7 +93,7 @@
                 </div>
                 <div class="col-md-6 text-center text-md-end">
                     <p class="mb-0 text-muted">
-                        Made with <i class="bi bi-heart-fill text-danger"></i> in Indonesia
+                        Made with <i class="bi bi-heart-fill text-danger"></i>
                     </p>
                 </div>
             </div>

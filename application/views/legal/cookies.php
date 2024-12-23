@@ -51,7 +51,7 @@
                     </div>
 
                     <!-- Pengaturan Cookies -->
-                    <div class="mb-4">
+                    <!-- <div class="mb-4">
                         <h5 class="mb-3">3. Mengatur Cookies</h5>
                         <div class="settings-container p-4 rounded">
                             <div class="cookie-settings mb-3">
@@ -84,10 +84,10 @@
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
 
                     <!-- Browser Settings -->
-                    <div class="mb-4">
+                    <!-- <div class="mb-4">
                         <h5 class="mb-3">4. Pengaturan Browser</h5>
                         <p class="text-muted mb-3">
                             Anda juga dapat mengatur cookies melalui browser Anda:
@@ -118,7 +118,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
 
                     <!-- Penutup -->
                     <div class="text-muted small">

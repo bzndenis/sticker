@@ -163,7 +163,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
                     Sepertinya stiker ini terselip di tempat lain. 
                     Mari kembali ke halaman utama!
                 </p>
-                <a href="/" class="btn btn-primary">
+                <a href="<?= base_url('/') ?>" class="btn btn-primary">
                     <i class="bi bi-house me-2"></i>Kembali ke Beranda
                 </a>
             </div>
