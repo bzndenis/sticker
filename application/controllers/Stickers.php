@@ -29,14 +29,9 @@ class Stickers extends CI_Controller {
         $data['stickers'] = $this->sticker_model->get_category_stickers($category_id);
         
         if ($this->input->post()) {
-            $config['upload_path'] = './uploads/stickers/';
-            $config['allowed_types'] = 'jpg|jpeg|png';
-            $config['max_size'] = 2048;
-            $this->load->library('upload', $config);
+            $upload_result = $this->_do_upload();
 
-            if ($this->upload->do_upload('image')) {
-                $upload_data = $this->upload->data();
-                
+            if ($upload_result['status']) {
                 // Get quantities
                 $quantities = $this->input->post('quantities');
                 
@@ -49,7 +44,7 @@ class Stickers extends CI_Controller {
                         'sticker_id' => $sticker_id,
                         'quantity' => $quantity,
                         'is_for_trade' => $quantity > 1 ? 1 : 0,
-                        'image_path' => $upload_data['file_name'],
+                        'image_path' => $upload_result['file_name'],
                         'created_at' => date('Y-m-d H:i:s'),
                         'updated_at' => date('Y-m-d H:i:s')
                     ];
@@ -69,7 +64,7 @@ class Stickers extends CI_Controller {
 
                 $this->session->set_flashdata('success', 'Stiker berhasil diupdate');
             } else {
-                $this->session->set_flashdata('error', $this->upload->display_errors());
+                $this->session->set_flashdata('error', $upload_result['error']);
             }
             
             redirect('stickers/category/'.$category_id);
@@ -105,22 +100,14 @@ class Stickers extends CI_Controller {
             redirect('stickers/category/'.$category_id);
         }
 
-        // Konfigurasi upload
-        $config['upload_path'] = './uploads/stickers/';
-        $config['allowed_types'] = 'gif|jpg|jpeg|png';
-        $config['max_size'] = 2048; // 2MB
-        $config['file_name'] = 'Sticker_'.time();
+        $upload_result = $this->_do_upload();
         
-        $this->load->library('upload', $config);
-        
-        if ($this->upload->do_upload('image')) {
-            $upload_data = $this->upload->data();
-            
-            // Update user_stickers, bukan stickers
+        if ($upload_result['status']) {
+            // Update user_stickers
             $user_sticker_data = [
                 'user_id' => $this->session->userdata('user_id'),
                 'sticker_id' => $sticker->id,
-                'image_path' => $upload_data['file_name'],
+                'image_path' => $upload_result['file_name'],
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s')
             ];
@@ -131,12 +118,53 @@ class Stickers extends CI_Controller {
             } else {
                 $this->session->set_flashdata('error', 'Gagal menyimpan stiker');
                 // Hapus file jika gagal menyimpan ke database
-                unlink($config['upload_path'].$upload_data['file_name']);
+                unlink('./uploads/stickers/'.$upload_result['file_name']);
             }
         } else {
-            $this->session->set_flashdata('error', $this->upload->display_errors());
+            $this->session->set_flashdata('error', $upload_result['error']);
         }
         
         redirect('stickers/category/'.$category_id);
+    }
+
+    private function _do_upload() {
+        // Load library image
+        $this->load->library('image_lib');
+
+        // Generate random filename
+        $random_name = bin2hex(random_bytes(16));
+        
+        // Konfigurasi upload
+        $config['upload_path'] = './uploads/stickers/';
+        $config['allowed_types'] = 'gif|jpg|jpeg|png';
+        $config['max_size'] = 2048; // 2MB
+        $config['file_name'] = $random_name;
+        $config['remove_spaces'] = TRUE;
+        
+        $this->load->library('upload', $config);
+        
+        if ($this->upload->do_upload('image')) {
+            $upload_data = $this->upload->data();
+            
+            // Compress image
+            $config_compress['image_library'] = 'gd2';
+            $config_compress['source_image'] = $upload_data['full_path'];
+            $config_compress['maintain_ratio'] = TRUE;
+            $config_compress['width'] = 800; // max width
+            $config_compress['quality'] = '70%';
+            
+            $this->image_lib->initialize($config_compress);
+            $this->image_lib->resize();
+            
+            return [
+                'status' => true,
+                'file_name' => $upload_data['file_name']
+            ];
+        }
+        
+        return [
+            'status' => false,
+            'error' => $this->upload->display_errors()
+        ];
     }
 } 
