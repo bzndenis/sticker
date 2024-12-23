@@ -9,37 +9,35 @@ class Collection_model extends CI_Model {
     }
     
     public function get_user_collections($user_id) {
-        $this->db->select('
-            sc.*,
-            COALESCE(user_stickers_count.owned, 0) as owned,
-            9 as total, /* Setiap kategori memiliki 9 stiker */
-            ROUND(COALESCE(user_stickers_count.owned, 0) / 9 * 100, 1) as progress
-        ');
+        $this->db->select('sc.*, 
+                          COUNT(DISTINCT s.id) as total,
+                          COUNT(DISTINCT us.sticker_id) as owned,
+                          ROUND((COUNT(DISTINCT us.sticker_id) / COUNT(DISTINCT s.id)) * 100, 1) as progress');
         $this->db->from('sticker_categories sc');
-        
-        // Subquery untuk menghitung stiker yang dimiliki per kategori
-        $this->db->join('(
-            SELECT s.category_id, COUNT(DISTINCT us.id) as owned 
-            FROM user_stickers us
-            JOIN stickers s ON s.id = us.sticker_id
-            WHERE us.user_id = '.$user_id.' 
-            GROUP BY s.category_id
-        ) as user_stickers_count', 'user_stickers_count.category_id = sc.id', 'left');
+        $this->db->join('stickers s', 's.category_id = sc.id');
+        $this->db->join('user_stickers us', 'us.sticker_id = s.id AND us.user_id = ' . $user_id, 'left');
+        $this->db->group_by('sc.id');
+        $this->db->order_by('sc.name');
         
         return $this->db->get()->result();
     }
     
-    public function count_user_collections($user_id) {
-        return $this->db->select('DISTINCT sc.id')
-                        ->from('sticker_categories sc')
-                        ->join('stickers s', 's.category_id = sc.id')
-                        ->join('user_stickers us', 'us.sticker_id = s.id')
-                        ->where('us.user_id', $user_id)
-                        ->count_all_results();
+    public function get_user_collections_progress($user_id) {
+        $this->db->select('sc.id, sc.name, 
+                          COUNT(DISTINCT s.id) as total,
+                          COUNT(DISTINCT us.sticker_id) as owned,
+                          ROUND((COUNT(DISTINCT us.sticker_id) / COUNT(DISTINCT s.id)) * 100) as progress');
+        $this->db->from('sticker_categories sc');
+        $this->db->join('stickers s', 's.category_id = sc.id');
+        $this->db->join('user_stickers us', 'us.sticker_id = s.id AND us.user_id = ' . $user_id, 'left');
+        $this->db->group_by('sc.id');
+        $this->db->order_by('sc.name');
+        
+        return $this->db->get()->result();
     }
 
     public function calculate_total_progress($user_id) {
-        $collections = $this->get_user_collections($user_id);
+        $collections = $this->get_user_collections_progress($user_id);
         if (empty($collections)) {
             return 0;
         }
@@ -55,5 +53,15 @@ class Collection_model extends CI_Model {
             return round(($total_owned / $total_stickers) * 100, 1);
         }
         return 0;
+    }
+
+    public function count_user_collections($user_id) {
+        $this->db->select('COUNT(DISTINCT sc.id) as total');
+        $this->db->from('sticker_categories sc');
+        $this->db->join('stickers s', 's.category_id = sc.id');
+        $this->db->join('user_stickers us', 'us.sticker_id = s.id AND us.user_id = ' . $user_id);
+        
+        $result = $this->db->get()->row();
+        return $result ? $result->total : 0;
     }
 } 

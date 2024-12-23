@@ -18,16 +18,12 @@
                 <div class="card floating">
                     <div class="card-body text-center">
                         <div class="mb-4">
-                            <?php if($user->avatar): ?>
-                                <img src="<?= base_url('uploads/avatars/' . $user->avatar) ?>" 
-                                     class="rounded-circle" alt="Avatar"
-                                     style="width: 120px; height: 120px; object-fit: cover;">
-                            <?php else: ?>
-                                <div class="rounded-circle bg-primary d-inline-flex align-items-center justify-content-center"
-                                     style="width: 120px; height: 120px;">
-                                    <i class="bi bi-person-circle" style="font-size: 3rem;"></i>
-                                </div>
-                            <?php endif; ?>
+                            <!-- Profile Image -->
+                            <div class="text-center mb-4">
+                                <img src="<?= base_url('uploads/avatars/' . (isset($user->avatar) ? $user->avatar : 'default.jpg')) ?>" 
+                                     class="rounded-circle profile-image" 
+                                     alt="Profile Image">
+                            </div>
                         </div>
                         <h4 class="mb-1"><?= $user->username ?></h4>
                         <p class="text-muted mb-3"><?= $user->email ?></p>
@@ -43,17 +39,17 @@
                 <div class="card mt-4">
                     <div class="card-body">
                         <h5 class="card-title mb-3">Statistik</h5>
-                        <div class="row text-center g-3">
+                        <div class="row text-center g-4">
                             <div class="col-4">
-                                <h4 class="mb-1"><?= number_format($stats->total_stickers) ?></h4>
+                                <h4 class="mb-1"><?= number_format(isset($stats->total_stickers) ? $stats->total_stickers : 0) ?></h4>
                                 <small class="text-muted">Stiker</small>
                             </div>
                             <div class="col-4">
-                                <h4 class="mb-1"><?= number_format($stats->total_trades) ?></h4>
+                                <h4 class="mb-1"><?= number_format(isset($stats->total_trades) ? $stats->total_trades : 0) ?></h4>
                                 <small class="text-muted">Pertukaran</small>
                             </div>
                             <div class="col-4">
-                                <h4 class="mb-1"><?= number_format($stats->completion_rate) ?>%</h4>
+                                <h4 class="mb-1"><?= number_format(isset($stats->completion_rate) ? $stats->completion_rate : 0) ?>%</h4>
                                 <small class="text-muted">Selesai</small>
                             </div>
                         </div>

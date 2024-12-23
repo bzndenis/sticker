@@ -1,41 +1,46 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Chat extends MY_Controller {
+class Chat extends CI_Controller {
+    private $chat_path;
     
     public function __construct() {
         parent::__construct();
-        $this->check_login();
-    }
-    
-    public function index() {
-        $user_id = $this->session->userdata('user_id');
-        $data['trades'] = $this->trade_model->get_user_trades_with_chat($user_id);
-        
-        $this->load->view('chat/index', $data);
-    }
-    
-    public function trade($trade_id) {
-        $user_id = $this->session->userdata('user_id');
-        
-        // Cek akses ke chat
-        $trade = $this->trade_model->get_trade($trade_id);
-        if(!$trade || ($trade->requester_id != $user_id && $trade->owner_id != $user_id)) {
-            show_404();
-            return;
+        if (!$this->session->userdata('user_id')) {
+            redirect('auth/login');
         }
+        $this->load->model('trade_model');
         
-        $data['trade'] = $trade;
-        $data['messages'] = $this->chat_model->get_messages($trade_id);
-        
-        // Mark messages as read
-        $this->chat_model->mark_messages_as_read($trade_id, $user_id);
-        
-        $this->load->view('chat/trade', $data);
+        // Buat direktori untuk menyimpan file chat jika belum ada
+        $this->chat_path = FCPATH . 'uploads/chats/';
+        if (!is_dir($this->chat_path)) {
+            mkdir($this->chat_path, 0777, true);
+        }
+    }
+    
+    private function get_chat_file($trade_id) {
+        return $this->chat_path . 'trade_' . $trade_id . '.json';
+    }
+    
+    private function load_messages($trade_id) {
+        $file = $this->get_chat_file($trade_id);
+        if (file_exists($file)) {
+            $content = file_get_contents($file);
+            if (!empty($content)) {
+                $messages = json_decode($content, true);
+                return is_array($messages) ? $messages : [];
+            }
+        }
+        return [];
+    }
+    
+    private function save_messages($trade_id, $messages) {
+        $file = $this->get_chat_file($trade_id);
+        return file_put_contents($file, json_encode($messages, JSON_PRETTY_PRINT)) !== false;
     }
     
     public function send() {
-        if(!$this->input->is_ajax_request()) {
+        if (!$this->input->is_ajax_request()) {
             show_404();
             return;
         }
@@ -44,77 +49,111 @@ class Chat extends MY_Controller {
         $trade_id = $this->input->post('trade_id');
         $message = trim($this->input->post('message'));
         
-        // Validasi input
-        if(!$trade_id || !$message) {
+        if (empty($trade_id) || empty($message)) {
             echo json_encode(['success' => false, 'message' => 'Data tidak lengkap']);
             return;
         }
         
-        // Validasi kepemilikan trade
         $trade = $this->trade_model->get_trade($trade_id);
-        if(!$trade || ($trade->requester_id != $user_id && $trade->owner_id != $user_id)) {
+        if (!$trade || ($trade->requester_id != $user_id && $trade->owner_id != $user_id)) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak']);
             return;
         }
         
-        $message_data = [
-            'trade_id' => $trade_id,
-            'user_id' => $user_id,
-            'message' => $message
-        ];
-        
-        $new_message = $this->chat_model->add_message($message_data);
-        if($new_message) {
+        try {
+            $messages = $this->load_messages($trade_id);
+            
+            // Pastikan messages adalah array
+            if (!is_array($messages)) {
+                $messages = [];
+            }
+            
+            $new_message = [
+                'id' => count($messages) + 1,
+                'user_id' => $user_id,
+                'message' => $message,
+                'is_delivered' => true,
+                'is_read' => false,
+                'created_at' => date('Y-m-d H:i:s')
+            ];
+            
+            $messages[] = $new_message;
+            
+            // Pastikan direktori ada dan bisa ditulis
+            if (!is_dir($this->chat_path)) {
+                mkdir($this->chat_path, 0777, true);
+            }
+            
+            if (!$this->save_messages($trade_id, $messages)) {
+                throw new Exception('Gagal menyimpan pesan ke file');
+            }
+            
             echo json_encode([
                 'success' => true,
                 'message' => [
-                    'message' => $new_message->message,
-                    'username' => $new_message->username,
-                    'created_at' => date('H:i', strtotime($new_message->created_at)),
-                    'is_mine' => true
+                    'id' => $new_message['id'],
+                    'message' => $new_message['message'],
+                    'username' => $this->get_username($user_id),
+                    'is_mine' => true,
+                    'is_delivered' => true,
+                    'is_read' => false,
+                    'created_at' => date('H:i')
                 ]
             ]);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Gagal mengirim pesan']);
+        } catch (Exception $e) {
+            log_message('error', 'Error saving chat message: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Gagal menyimpan pesan: ' . $e->getMessage()]);
         }
     }
     
-    public function get_new_messages() {
-        if(!$this->input->is_ajax_request()) {
+    public function get_messages($trade_id) {
+        if (!$this->input->is_ajax_request()) {
             show_404();
             return;
         }
         
         $user_id = $this->session->userdata('user_id');
-        $trade_id = $this->input->get('trade_id');
-        $last_id = $this->input->get('last_id');
         
-        // Validasi input
-        if(!$trade_id || !$last_id) {
-            $this->output->set_status_header(400);
-            echo json_encode(['status' => 'error', 'message' => 'Parameter tidak valid']);
-            return;
-        }
-        
-        // Cek akses ke chat
+        // Validasi akses ke trade
         $trade = $this->trade_model->get_trade($trade_id);
-        if(!$trade || ($trade->requester_id != $user_id && $trade->owner_id != $user_id)) {
-            $this->output->set_status_header(403);
-            echo json_encode(['status' => 'error', 'message' => 'Akses ditolak']);
+        if (!$trade || ($trade->requester_id != $user_id && $trade->owner_id != $user_id)) {
+            echo json_encode(['success' => false, 'message' => 'Akses ditolak']);
             return;
         }
         
-        // Ambil pesan baru
-        $messages = $this->chat_model->get_new_messages($trade_id, $last_id);
+        $messages = $this->load_messages($trade_id);
         
-        // Mark messages as read
-        if(!empty($messages)) {
-            $this->chat_model->mark_messages_as_read($trade_id, $user_id);
+        // Update status read untuk pesan yang diterima
+        $updated = false;
+        foreach ($messages as &$msg) {
+            if ($msg['user_id'] != $user_id && !$msg['is_read']) {
+                $msg['is_read'] = true;
+                $updated = true;
+            }
+        }
+        
+        if ($updated) {
+            $this->save_messages($trade_id, $messages);
         }
         
         echo json_encode([
-            'status' => 'success',
-            'messages' => $messages
+            'success' => true,
+            'messages' => array_map(function($msg) use ($user_id) {
+                return [
+                    'id' => $msg['id'],
+                    'message' => $msg['message'],
+                    'username' => $this->get_username($msg['user_id']),
+                    'is_mine' => $msg['user_id'] == $user_id,
+                    'is_delivered' => isset($msg['is_delivered']) ? $msg['is_delivered'] : true,
+                    'is_read' => isset($msg['is_read']) ? $msg['is_read'] : false,
+                    'created_at' => date('H:i', strtotime($msg['created_at']))
+                ];
+            }, $messages)
         ]);
+    }
+    
+    private function get_username($user_id) {
+        $user = $this->db->select('username')->where('id', $user_id)->get('users')->row();
+        return $user ? $user->username : 'Unknown';
     }
 } 

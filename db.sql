@@ -11,10 +11,10 @@
  Target Server Version : 80030 (8.0.30)
  File Encoding         : 65001
 
- Date: 23/12/2024 00:16:41
+ Date: 23/12/2024 13:08:35
 */
 
-SET NAMES utf8mb4;
+SET NAMES latin1;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- ----------------------------
@@ -24,8 +24,8 @@ DROP TABLE IF EXISTS `activity_logs`;
 CREATE TABLE `activity_logs`  (
   `id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
-  `action` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
-  `type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `action` varchar(50) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `type` varchar(50) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT NULL,
   `count` int NULL DEFAULT NULL,
   `notification_id` int NULL DEFAULT NULL,
   `created_at` datetime NOT NULL,
@@ -34,7 +34,11 @@ CREATE TABLE `activity_logs`  (
   INDEX `notification_id`(`notification_id` ASC) USING BTREE,
   CONSTRAINT `activity_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `activity_logs_ibfk_2` FOREIGN KEY (`notification_id`) REFERENCES `notifications` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = latin1 COLLATE = latin1_swedish_ci ROW_FORMAT = Dynamic;
+
+-- Mengubah collation untuk tabel activity_logs
+ALTER TABLE `activity_logs` 
+CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
 -- ----------------------------
 -- Records of activity_logs
@@ -47,18 +51,22 @@ DROP TABLE IF EXISTS `bug_reports`;
 CREATE TABLE `bug_reports`  (
   `id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
-  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `page` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `severity` enum('low','medium','high') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT 'low',
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `screenshot` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
-  `status` enum('open','in_progress','resolved','closed') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT 'open',
+  `title` varchar(255) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `page` varchar(100) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `severity` enum('low','medium','high') CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT 'low',
+  `description` text CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `screenshot` varchar(255) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT NULL,
+  `status` enum('open','in_progress','resolved','closed') CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT 'open',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `resolved_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `user_id`(`user_id` ASC) USING BTREE,
   CONSTRAINT `bug_reports_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = latin1 COLLATE = latin1_swedish_ci ROW_FORMAT = Dynamic;
+
+-- Mengubah collation untuk tabel bug_reports
+ALTER TABLE `bug_reports` 
+CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
 -- ----------------------------
 -- Records of bug_reports
@@ -75,19 +83,23 @@ CREATE TABLE `chat_messages`  (
   `id` int NOT NULL AUTO_INCREMENT,
   `trade_id` int NOT NULL,
   `user_id` int NOT NULL,
-  `message` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `is_delivered` tinyint(1) NULL DEFAULT 1,
-  `is_read` tinyint(1) NULL DEFAULT 0,
-  `read_at` datetime NULL DEFAULT NULL,
+  `message` text CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `is_delivered` tinyint(1) DEFAULT '1',
+  `is_read` tinyint(1) DEFAULT '0',
+  `read_at` datetime DEFAULT NULL,
   `created_at` datetime NOT NULL,
-  PRIMARY KEY (`id`) USING BTREE,
-  INDEX `user_id`(`user_id` ASC) USING BTREE,
-  INDEX `idx_trade_user`(`trade_id` ASC, `user_id` ASC) USING BTREE,
-  INDEX `idx_status`(`is_read` ASC, `read_at` ASC) USING BTREE,
-  INDEX `idx_chat_created`(`created_at` ASC) USING BTREE,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  KEY `idx_trade_user` (`trade_id`,`user_id`),
+  KEY `idx_status` (`is_read`,`read_at`),
+  KEY `idx_chat_created` (`created_at`),
   CONSTRAINT `chat_messages_ibfk_1` FOREIGN KEY (`trade_id`) REFERENCES `trades` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `chat_messages_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 16 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+-- Mengubah collation untuk tabel chat_messages
+ALTER TABLE `chat_messages` 
+CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
 -- ----------------------------
 -- Records of chat_messages
@@ -99,13 +111,17 @@ CREATE TABLE `chat_messages`  (
 DROP TABLE IF EXISTS `collections`;
 CREATE TABLE `collections`  (
   `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
+  `name` varchar(100) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `description` text CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL,
   `total_stickers` int NOT NULL DEFAULT 0,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = latin1 COLLATE = latin1_swedish_ci ROW_FORMAT = Dynamic;
+
+-- Mengubah collation untuk tabel collections
+ALTER TABLE `collections` 
+CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
 -- ----------------------------
 -- Records of collections
@@ -120,15 +136,19 @@ INSERT INTO `collections` VALUES (3, 'Koleksi Spesial', 'Koleksi stiker edisi te
 DROP TABLE IF EXISTS `contacts`;
 CREATE TABLE `contacts`  (
   `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `subject` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `message` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `status` enum('pending','replied','closed') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT 'pending',
+  `name` varchar(100) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `email` varchar(100) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `subject` varchar(255) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `message` text CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `status` enum('pending','replied','closed') CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT 'pending',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `replied_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = latin1 COLLATE = latin1_swedish_ci ROW_FORMAT = Dynamic;
+
+-- Mengubah collation untuk tabel contacts
+ALTER TABLE `contacts` 
+CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
 -- ----------------------------
 -- Records of contacts
@@ -143,13 +163,17 @@ INSERT INTO `contacts` VALUES (3, 'Citra Purnama', 'citra@email.com', 'Laporan E
 DROP TABLE IF EXISTS `faqs`;
 CREATE TABLE `faqs`  (
   `id` int NOT NULL AUTO_INCREMENT,
-  `question` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `answer` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `category` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT 'general',
+  `question` varchar(255) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `answer` text CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `category` varchar(50) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT 'general',
   `order_number` int NULL DEFAULT 0,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 10 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 10 CHARACTER SET = latin1 COLLATE = latin1_swedish_ci ROW_FORMAT = Dynamic;
+
+-- Mengubah collation untuk tabel faqs
+ALTER TABLE `faqs` 
+CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
 -- ----------------------------
 -- Records of faqs
@@ -170,21 +194,25 @@ INSERT INTO `faqs` VALUES (9, 'Bagaimana jika pertukaran ditolak?', 'Jika pertuk
 DROP TABLE IF EXISTS `guides`;
 CREATE TABLE `guides`  (
   `id` int NOT NULL AUTO_INCREMENT,
-  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `slug` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `category` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT 'general',
+  `title` varchar(255) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `slug` varchar(255) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `content` text CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `category` varchar(50) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT 'general',
   `order_number` int NULL DEFAULT 0,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `slug`(`slug` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = latin1 COLLATE = latin1_swedish_ci ROW_FORMAT = Dynamic;
+
+-- Mengubah collation untuk tabel guides
+ALTER TABLE `guides` 
+CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
 -- ----------------------------
 -- Records of guides
 -- ----------------------------
-INSERT INTO `guides` VALUES (1, 'Panduan Memulai', 'getting-started', '# Selamat Datang di Sticker Exchange!\n\n## Langkah-langkah Memulai\n\n### 1. Membuat Akun\n- Klik tombol \"Daftar\"\n- Isi formulir pendaftaran\n- Verifikasi email Anda\n\n### 2. Menjelajahi Platform\n- Lihat koleksi yang tersedia\n- Kenali fitur-fitur utama\n- Atur profil Anda\n\n### 3. Memulai Koleksi\n- Buka pack stiker harian\n- Pilih kategori favorit\n- Mulai mengumpulkan stiker\n\n### 4. Berinteraksi\n- Ikuti pengguna lain\n- Bergabung dalam komunitas\n- Mulai pertukaran pertama Anda', 'general', 1, '2024-12-23 00:15:48', '2024-12-23 00:15:48');
+INSERT INTO `guides` VALUES (1, 'Panduan Memulai', 'getting-started', '# Selamat Datang di Sticker Exchange!\r\n\r\n## 1. Membuat Akun\r\n\r\n### Langkah-langkah Pendaftaran\r\n1. Klik tombol \"Daftar\" di pojok kanan atas\r\n2. Isi formulir pendaftaran dengan:\r\n   - Username yang unik\r\n   - Email yang valid \r\n   - Password yang aman\r\n3. Baca dan setujui syarat & ketentuan\r\n4. Klik tombol \"Daftar\"\r\n5. Cek email untuk verifikasi\r\n\r\n### Tips Keamanan Akun\r\n- Gunakan password yang kuat\r\n- Jangan bagikan informasi login\r\n- Aktifkan autentikasi 2 langkah\r\n- Perbarui password secara berkala\r\n\r\n## 2. Menjelajahi Platform\r\n\r\n### Fitur Utama\r\n**Dashboard**\r\n- Pusat kontrol koleksi Anda\r\n- Pantau progress koleksi\r\n- Lihat statistik pertukaran\r\n\r\n**Feed**\r\n- Temukan stiker dari pengguna lain\r\n- Jelajahi koleksi terbaru\r\n- Interaksi dengan kolektor\r\n\r\n**Koleksi**\r\n- Kelola stiker-stiker Anda\r\n- Atur status pertukaran\r\n- Organisir berdasar kategori\r\n\r\n**Pertukaran**\r\n- Mulai trading dengan kolektor\r\n- Ajukan penawaran\r\n- Pantau status pertukaran\r\n\r\n### Mengatur Profil\r\n1. Klik foto profil Anda\r\n2. Pilih menu \"Edit Profil\"\r\n3. Lengkapi informasi:\r\n   - Foto profil menarik\r\n   - Bio singkat\r\n   - Informasi kontak\r\n4. Atur preferensi notifikasi\r\n\r\n## 3. Memulai Koleksi\r\n\r\n### Pack Stiker Harian\r\n- Klaim pack gratis setiap hari\r\n- Buka pack untuk stiker acak\r\n- Dapatkan stiker dari berbagai kategori\r\n- Simpan stiker duplikat untuk ditukar\r\n\r\n### Memilih Kategori\r\n1. Jelajahi kategori yang tersedia\r\n2. Pilih kategori favorit Anda\r\n3. Pantau progress per kategori\r\n4. Tetapkan target penyelesaian\r\n\r\n### Tips Mengoleksi\r\n- Fokus pada satu kategori dulu\r\n- Manfaatkan event khusus\r\n- Ikuti update koleksi baru\r\n- Kelola stiker duplikat dengan baik\r\n\r\n## 4. Berinteraksi dengan Komunitas\r\n\r\n### Mengikuti Kolektor\r\n- Temukan kolektor aktif\r\n- Follow untuk update terbaru\r\n- Lihat koleksi mereka\r\n- Mulai interaksi pertukaran\r\n\r\n### Event & Challenge\r\n- Ikuti event mingguan\r\n- Dapatkan stiker eksklusif\r\n- Partisipasi dalam challenge\r\n- Menangkan hadiah spesial\r\n\r\n### Panduan Pertukaran\r\n1. Temukan stiker yang diinginkan\r\n2. Cek status ketersediaan\r\n3. Ajukan penawaran yang adil\r\n4. Tunggu konfirmasi pemilik\r\n5. Selesaikan pertukaran\r\n\r\n## Tips & Trik Tambahan\r\n\r\n### Maksimalkan Koleksi\r\n- Login setiap hari untuk rewards\r\n- Selesaikan misi harian\r\n- Ikuti panduan achievement\r\n- Bergabung dalam grup komunitas\r\n\r\n### Etika Bertransaksi\r\n- Bersikap sopan dan profesional\r\n- Berikan penawaran yang masuk akal\r\n- Respon permintaan dengan cepat\r\n- Jaga reputasi akun Anda\r\n\r\n## Bantuan & Dukungan\r\n\r\nJika membutuhkan bantuan:\r\n- Kunjungi halaman FAQ\r\n- Hubungi tim support\r\n- Laporkan bug/masalah\r\n- Berikan feedback untuk peningkatan\r\n\r\n*Selamat mengoleksi dan bertransaksi!*', 'general', 1, '2024-12-23 00:15:48', '2024-12-23 00:22:10');
 INSERT INTO `guides` VALUES (2, 'Panduan Pertukaran', 'trading-guide', '# Panduan Pertukaran Stiker\n\n## Cara Melakukan Pertukaran\n\n### 1. Memilih Stiker\n- Cari stiker yang diinginkan\n- Periksa status ketersediaan\n- Pastikan Anda memiliki stiker untuk ditukar\n\n### 2. Mengajukan Pertukaran\n- Klik tombol \"Tukar\"\n- Pilih stiker yang ditawarkan\n- Tambahkan pesan (opsional)\n\n### 3. Menunggu Konfirmasi\n- Pantau status pertukaran\n- Tunggu respons pemilik\n- Cek notifikasi\n\n### 4. Menyelesaikan Pertukaran\n- Terima/tolak tawaran\n- Konfirmasi pertukaran\n- Beri rating (opsional)', 'trading', 2, '2024-12-23 00:15:48', '2024-12-23 00:15:48');
 INSERT INTO `guides` VALUES (3, 'Tips Mengoleksi', 'collection-tips', '# Tips Mengoleksi Stiker\n\n## Strategi Koleksi\n\n### 1. Fokus pada Kategori\n- Pilih kategori favorit\n- Selesaikan satu per satu\n- Pantau progress\n\n### 2. Manajemen Koleksi\n- Atur stiker duplikat\n- Kelola status tukar\n- Catat stiker yang diinginkan\n\n### 3. Berinteraksi dengan Komunitas\n- Ikuti kolektor aktif\n- Bergabung dalam event\n- Bagikan tips dengan pengguna lain', 'collection', 3, '2024-12-23 00:15:48', '2024-12-23 00:15:48');
 
@@ -195,10 +223,10 @@ DROP TABLE IF EXISTS `notifications`;
 CREATE TABLE `notifications`  (
   `id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
-  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
-  `message` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
-  `type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
-  `reference_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `title` varchar(255) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `message` text CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `type` varchar(50) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT NULL,
+  `reference_type` varchar(50) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT NULL,
   `reference_id` int NULL DEFAULT NULL,
   `is_read` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` datetime NOT NULL,
@@ -207,7 +235,11 @@ CREATE TABLE `notifications`  (
   INDEX `user_id`(`user_id` ASC) USING BTREE,
   INDEX `reference_id`(`reference_id` ASC) USING BTREE,
   CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB CHARACTER SET = latin1 COLLATE = latin1_swedish_ci ROW_FORMAT = Dynamic;
+
+-- Mengubah collation untuk tabel notifications
+ALTER TABLE `notifications` 
+CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
 -- ----------------------------
 -- Records of notifications
@@ -219,13 +251,17 @@ CREATE TABLE `notifications`  (
 DROP TABLE IF EXISTS `sticker_categories`;
 CREATE TABLE `sticker_categories`  (
   `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `slug` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
+  `name` varchar(100) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `slug` varchar(100) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `description` text CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 13 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 13 CHARACTER SET = latin1 COLLATE = latin1_swedish_ci ROW_FORMAT = DYNAMIC;
+
+-- Mengubah collation untuk tabel sticker_categories
+ALTER TABLE `sticker_categories` 
+CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
 -- ----------------------------
 -- Records of sticker_categories
@@ -257,7 +293,11 @@ CREATE TABLE `stickers`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_stickers_category`(`category_id` ASC) USING BTREE,
   CONSTRAINT `stickers_ibfk_1` FOREIGN KEY (`category_id`) REFERENCES `sticker_categories` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 109 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 109 CHARACTER SET = latin1 COLLATE = latin1_swedish_ci ROW_FORMAT = DYNAMIC;
+
+-- Mengubah collation untuk tabel stickers
+ALTER TABLE `stickers` 
+CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
 -- ----------------------------
 -- Records of stickers
@@ -379,14 +419,18 @@ CREATE TABLE `trade_messages`  (
   `id` int NOT NULL AUTO_INCREMENT,
   `trade_id` int NOT NULL,
   `user_id` int NOT NULL,
-  `message` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `message` text CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
   `created_at` datetime NOT NULL,
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `trade_id`(`trade_id` ASC) USING BTREE,
   INDEX `user_id`(`user_id` ASC) USING BTREE,
   CONSTRAINT `trade_messages_ibfk_1` FOREIGN KEY (`trade_id`) REFERENCES `trades` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
   CONSTRAINT `trade_messages_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 8 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 8 CHARACTER SET = latin1 COLLATE = latin1_swedish_ci ROW_FORMAT = DYNAMIC;
+
+-- Mengubah collation untuk tabel trade_messages
+ALTER TABLE `trade_messages` 
+CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
 -- ----------------------------
 -- Records of trade_messages
@@ -409,7 +453,7 @@ CREATE TABLE `trades`  (
   `owner_id` int NOT NULL,
   `requested_sticker_id` int NOT NULL,
   `offered_sticker_id` int NOT NULL,
-  `status` enum('pending','accepted','rejected','cancelled') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT 'pending',
+  `status` enum('pending','accepted','rejected','cancelled') CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT 'pending',
   `created_at` datetime NOT NULL,
   `updated_at` datetime NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE,
@@ -421,7 +465,11 @@ CREATE TABLE `trades`  (
   CONSTRAINT `trades_ibfk_2` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `trades_ibfk_3` FOREIGN KEY (`requested_sticker_id`) REFERENCES `stickers` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `trades_ibfk_4` FOREIGN KEY (`offered_sticker_id`) REFERENCES `stickers` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = latin1 COLLATE = latin1_swedish_ci ROW_FORMAT = DYNAMIC;
+
+-- Mengubah collation untuk tabel trades
+ALTER TABLE `trades` 
+CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
 -- ----------------------------
 -- Records of trades
@@ -441,8 +489,8 @@ CREATE TABLE `user_stickers`  (
   `created_at` datetime NOT NULL,
   `updated_at` datetime NULL DEFAULT NULL,
   `number` int NOT NULL DEFAULT 1,
-  `image_path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
-  `image_hash` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `image_path` varchar(255) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT NULL,
+  `image_hash` varchar(32) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT NULL,
   `collection_id` int NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `unique_user_sticker_number`(`user_id` ASC, `sticker_id` ASC, `number` ASC) USING BTREE,
@@ -452,7 +500,11 @@ CREATE TABLE `user_stickers`  (
   CONSTRAINT `user_stickers_collection_fk` FOREIGN KEY (`collection_id`) REFERENCES `collections` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT,
   CONSTRAINT `user_stickers_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `user_stickers_ibfk_2` FOREIGN KEY (`sticker_id`) REFERENCES `stickers` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB AUTO_INCREMENT = 45 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 45 CHARACTER SET = latin1 COLLATE = latin1_swedish_ci ROW_FORMAT = DYNAMIC;
+
+-- Mengubah collation untuk tabel user_stickers
+ALTER TABLE `user_stickers` 
+CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
 -- ----------------------------
 -- Records of user_stickers
@@ -481,9 +533,10 @@ INSERT INTO `user_stickers` VALUES (44, 2, 9, 7, 1, '2024-12-23 00:06:06', '2024
 DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users`  (
   `id` int NOT NULL AUTO_INCREMENT,
-  `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `password` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `username` varchar(50) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `email` varchar(100) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
+  `avatar` varchar(255) CHARACTER SET latin1 COLLATE latin1_swedish_ci NULL DEFAULT 'default.jpg',
+  `password` varchar(255) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
   `is_active` tinyint(1) NULL DEFAULT 1,
   `is_admin` tinyint(1) NULL DEFAULT 0,
   `created_at` datetime NOT NULL,
@@ -491,13 +544,17 @@ CREATE TABLE `users`  (
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `username`(`username` ASC) USING BTREE,
   UNIQUE INDEX `email`(`email` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = latin1 COLLATE = latin1_swedish_ci ROW_FORMAT = DYNAMIC;
+
+-- Mengubah collation untuk tabel users
+ALTER TABLE `users` 
+CONVERT TO CHARACTER SET latin1 COLLATE latin1_swedish_ci;
 
 -- ----------------------------
 -- Records of users
 -- ----------------------------
-INSERT INTO `users` VALUES (1, 'Bekoy', 'bzndenis@gmail.com', '$2y$10$Q1oV.uvO5FCUWbQz53t93.rLHRiI467aTOVanipdCK.l5fZhnSoLO', 1, 1, '2024-12-22 01:22:48', NULL);
-INSERT INTO `users` VALUES (2, 'Bekoy66', 'bzndenis1@gmail.com', '$2y$10$LIEGPbomOv//F77cJeVKuuHmRNTsHJBpVSV2eXm0YLPHhAuGmOlv.', 1, 0, '2024-12-22 01:31:40', NULL);
-INSERT INTO `users` VALUES (3, 'Bekoy666', 'bzndenis11@gmail.com', '$2y$10$UhAEJjy71w3o6S1x21/XHedqUKecd2tQGoZoTbhSmzVC5TI02idbm', 1, 0, '2024-12-22 01:31:59', NULL);
+INSERT INTO `users` VALUES (1, 'Bekoy', 'bzndenis@gmail.com', 'default.jpg', '$2y$10$Q1oV.uvO5FCUWbQz53t93.rLHRiI467aTOVanipdCK.l5fZhnSoLO', 1, 1, '2024-12-22 01:22:48', NULL);
+INSERT INTO `users` VALUES (2, 'Bekoy66', 'bzndenis1@gmail.com', 'default.jpg', '$2y$10$LIEGPbomOv//F77cJeVKuuHmRNTsHJBpVSV2eXm0YLPHhAuGmOlv.', 1, 0, '2024-12-22 01:31:40', NULL);
+INSERT INTO `users` VALUES (3, 'Bekoy666', 'bzndenis11@gmail.com', 'default.jpg', '$2y$10$UhAEJjy71w3o6S1x21/XHedqUKecd2tQGoZoTbhSmzVC5TI02idbm', 1, 0, '2024-12-22 01:31:59', NULL);
 
 SET FOREIGN_KEY_CHECKS = 1;

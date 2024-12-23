@@ -47,7 +47,8 @@ class User_model extends CI_Model {
     
     public function count_user_stickers($user_id) {
         return $this->db->where('user_id', $user_id)
-                       ->count_all_results('user_stickers');
+                        ->from('user_stickers')
+                        ->count_all_results();
     }
     
     public function update_last_login($user_id) {
@@ -55,5 +56,25 @@ class User_model extends CI_Model {
                        ->update('users', [
                            'last_login' => date('Y-m-d H:i:s')
                        ]);
+    }
+    
+    public function get_user_by_username($username) {
+        return $this->db->where('username', $username)
+                        ->get('users')
+                        ->row();
+    }
+    
+    public function get_user_by_username_except($username, $user_id) {
+        return $this->db->where('username', $username)
+                        ->where('id !=', $user_id)
+                        ->get('users')
+                        ->row();
+    }
+    
+    public function get_user_by_email_except($email, $user_id) {
+        return $this->db->where('email', $email)
+                        ->where('id !=', $user_id)
+                        ->get('users')
+                        ->row();
     }
 } 

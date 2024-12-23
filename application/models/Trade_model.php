@@ -14,29 +14,10 @@ class Trade_model extends CI_Model {
     }
     
     public function get_user_trades($user_id) {
-        $this->db->select('t.*, 
-                          rsc.name as requested_category,
-                          osc.name as offered_category,
-                          u1.username as requester_username,
-                          u2.username as owner_username,
-                          rus.image_path as requested_image,
-                          ous.image_path as offered_image,
-                          rs.number as requested_number,
-                          os.number as offered_number')
-            ->from('trades t')
-            ->join('stickers rs', 'rs.id = t.requested_sticker_id')
-            ->join('stickers os', 'os.id = t.offered_sticker_id')
-            ->join('sticker_categories rsc', 'rsc.id = rs.category_id')
-            ->join('sticker_categories osc', 'osc.id = os.category_id')
-            ->join('users u1', 'u1.id = t.requester_id')
-            ->join('users u2', 'u2.id = t.owner_id')
-            ->join('user_stickers rus', 'rus.sticker_id = rs.id AND rus.user_id = t.owner_id', 'left')
-            ->join('user_stickers ous', 'ous.sticker_id = os.id AND ous.user_id = t.requester_id', 'left')
-            ->where('t.requester_id', $user_id)
-            ->or_where('t.owner_id', $user_id)
-            ->order_by('t.created_at', 'DESC');
-        
-        return $this->db->get()->result();
+        return $this->db->where('requester_id', $user_id)
+                       ->or_where('owner_id', $user_id)
+                       ->get('trades')
+                       ->result();
     }
     
     public function update_trade_status($trade_id, $status) {
@@ -106,12 +87,30 @@ class Trade_model extends CI_Model {
         return $this->db->where('status', 'pending')->count_all_results('trades');
     }
 
-    public function get_trade_stats() {
-        $total_trades = $this->count_trades();
-        $pending_trades = $this->count_pending_trades();
-        return [
+    public function get_trade_stats($user_id) {
+        // Hitung total trades
+        $total_trades = $this->db->where('requester_id', $user_id)
+                                ->or_where('owner_id', $user_id)
+                                ->count_all_results('trades');
+        
+        // Hitung pending trades                        
+        $pending_trades = $this->db->where('status', 'pending')
+                                  ->where('(requester_id = ' . $user_id . ' OR owner_id = ' . $user_id . ')')
+                                  ->count_all_results('trades');
+                                  
+        // Hitung successful trades
+        $success_trades = $this->db->where('status', 'accepted')
+                                  ->where('(requester_id = ' . $user_id . ' OR owner_id = ' . $user_id . ')')
+                                  ->count_all_results('trades');
+                                  
+        // Hitung completion rate
+        $completion_rate = $total_trades > 0 ? ($success_trades / $total_trades) * 100 : 0;
+        
+        return (object)[
             'total_trades' => $total_trades,
-            'pending_trades' => $pending_trades
+            'pending_trades' => $pending_trades,
+            'success_trades' => $success_trades,
+            'completion_rate' => round($completion_rate, 1)
         ];
     }
     
@@ -292,5 +291,37 @@ class Trade_model extends CI_Model {
 
     public function add_message($data) {
         return $this->db->insert('trade_messages', $data);
+    }
+
+    public function get_trade_detail($trade_id) {
+        return $this->db->select('trades.*, 
+                                req_sticker.number as requested_number,
+                                req_sticker.category_id as requested_category,
+                                req_us.image_path as requested_image,
+                                off_sticker.number as offered_number,
+                                off_sticker.category_id as offered_category,
+                                off_us.image_path as offered_image,
+                                requester.username as requester_username,
+                                owner.username as owner_username')
+                        ->from('trades')
+                        ->join('stickers as req_sticker', 'req_sticker.id = trades.requested_sticker_id')
+                        ->join('stickers as off_sticker', 'off_sticker.id = trades.offered_sticker_id')
+                        ->join('user_stickers as req_us', 'req_us.sticker_id = trades.requested_sticker_id AND req_us.user_id = trades.owner_id')
+                        ->join('user_stickers as off_us', 'off_us.sticker_id = trades.offered_sticker_id AND off_us.user_id = trades.requester_id')
+                        ->join('users as requester', 'requester.id = trades.requester_id')
+                        ->join('users as owner', 'owner.id = trades.owner_id')
+                        ->where('trades.id', $trade_id)
+                        ->get()
+                        ->row();
+    }
+
+    public function get_chat_messages($trade_id) {
+        return $this->db->select('chat_messages.*, users.username')
+                        ->from('chat_messages')
+                        ->join('users', 'users.id = chat_messages.user_id')
+                        ->where('trade_id', $trade_id)
+                        ->order_by('created_at', 'ASC')
+                        ->get()
+                        ->result();
     }
 } 

@@ -191,6 +191,7 @@
             background: rgba(255, 255, 255, 0.3);
         }
     </style>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
 <body class="d-flex flex-column h-100">
     <div class="content-wrapper">

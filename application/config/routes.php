@@ -65,16 +65,15 @@ $route['collections/search'] = 'collections/search';
 
 // Trade routes
 $route['trades'] = 'trades/index';
-$route['trades/request/(:num)'] = 'trades/request/$1';
-$route['trades/submit_request'] = 'trades/submit_request';
+$route['trades/create/(:num)'] = 'trades/create/$1';
+$route['trades/store'] = 'trades/store';
 $route['trades/view/(:num)'] = 'trades/view/$1';
 $route['trades/accept/(:num)'] = 'trades/accept/$1';
 $route['trades/reject/(:num)'] = 'trades/reject/$1';
-$route['trades/get_tradeable_stickers'] = 'trades/get_tradeable_stickers';
-
-// Trade chat routes
-$route['trades/send_message']['post'] = 'trades/send_message';
-$route['trades/get_new_messages']['get'] = 'trades/get_new_messages';
+$route['trades/send_message'] = 'trades/send_message';
+$route['trades/get_new_messages'] = 'trades/get_new_messages';
+$route['trades/get_chat_messages/(:num)'] = 'trades/get_chat_messages/$1';
+$route['trades/mark_messages_read/(:num)'] = 'trades/mark_messages_read/$1';
 
 // Chat routes
 $route['chat'] = 'chat/index';
