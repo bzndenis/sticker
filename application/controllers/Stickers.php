@@ -39,6 +39,20 @@ class Stickers extends CI_Controller {
                 foreach($quantities as $number => $quantity) {
                     $sticker_id = $data['stickers'][$number-1]->id;
                     
+                    // Check if user_sticker exists first
+                    $existing = $this->sticker_model->get_user_sticker(
+                        $this->session->userdata('user_id'),
+                        $sticker_id
+                    );
+
+                    // Hapus foto lama jika ada
+                    if ($existing && $existing->image_path) {
+                        $old_file = './uploads/stickers/' . $existing->image_path;
+                        if (file_exists($old_file)) {
+                            unlink($old_file);
+                        }
+                    }
+
                     $user_sticker_data = [
                         'user_id' => $this->session->userdata('user_id'),
                         'sticker_id' => $sticker_id,
@@ -48,12 +62,6 @@ class Stickers extends CI_Controller {
                         'created_at' => date('Y-m-d H:i:s'),
                         'updated_at' => date('Y-m-d H:i:s')
                     ];
-
-                    // Check if user_sticker exists
-                    $existing = $this->sticker_model->get_user_sticker(
-                        $this->session->userdata('user_id'),
-                        $sticker_id
-                    );
 
                     if ($existing) {
                         $this->sticker_model->update_user_sticker($existing->id, $user_sticker_data);
@@ -103,6 +111,20 @@ class Stickers extends CI_Controller {
         $upload_result = $this->_do_upload();
         
         if ($upload_result['status']) {
+            // Cek stiker yang sudah ada
+            $existing = $this->sticker_model->get_user_sticker(
+                $this->session->userdata('user_id'),
+                $this->input->post('sticker_id')
+            );
+
+            // Hapus foto lama jika ada
+            if ($existing && $existing->image_path) {
+                $old_file = './uploads/stickers/' . $existing->image_path;
+                if (file_exists($old_file)) {
+                    unlink($old_file);
+                }
+            }
+
             // Update user_stickers
             $user_sticker_data = [
                 'user_id' => $this->session->userdata('user_id'),
