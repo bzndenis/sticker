@@ -19,7 +19,7 @@
                         <?php endif; ?>
                         
                         <div class="card-body">
-                            <h5 class="card-title">Stiker #<?= $sticker['sticker_number'] ?></h5>
+                            <h5 class="card-title">Stiker #<?= $sticker['number'] ?></h5>
                             <p class="card-text">
                                 Kategori: <?= $sticker['category_name'] ?><br>
                                 Pemilik: <?= $sticker['username'] ?><br>

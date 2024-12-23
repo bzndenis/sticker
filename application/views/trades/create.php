@@ -27,7 +27,7 @@
                         <label class="form-label">Stiker yang Diminta</label>
                         <div class="card">
                             <div class="card-body">
-                                <h6>Stiker #<?= $requested_sticker->number ?></h6>
+                                <h6>Stiker #<?= $requested_sticker->sticker_number ?></h6>
                             </div>
                         </div>
                     </div>
@@ -39,7 +39,8 @@
                             <?php foreach($owned_stickers as $sticker): ?>
                                 <option value="<?= $sticker->sticker_id ?>">
                                     Stiker #<?= $sticker->sticker_number ?> 
-                                    (Tersedia: <?= $sticker->quantity ?>)
+                                    (<?= $sticker->category_name ?>) 
+                                    - Tersedia: <?= $sticker->quantity ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>

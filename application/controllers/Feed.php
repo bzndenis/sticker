@@ -46,7 +46,21 @@ class Feed extends MY_Controller {
 
         $data['title'] = 'Feed';
         $data['user'] = $this->db->get_where('users', ['id' => $this->session->userdata('user_id')])->row_array();
-        $data['stickers'] = $this->Feed_model->get_available_stickers($this->session->userdata('user_id'), $config['per_page'], $page);
+        $user_id = $this->session->userdata('user_id');
+
+        // Query untuk mendapatkan stiker yang tersedia untuk ditukar
+        $this->db->select('us.*, s.number, s.id, sc.name as category_name, u.username')
+                 ->from('user_stickers us')
+                 ->join('stickers s', 's.id = us.sticker_id')
+                 ->join('sticker_categories sc', 'sc.id = s.category_id')
+                 ->join('users u', 'u.id = us.user_id')
+                 ->where('us.is_for_trade', 1)
+                 ->where('us.quantity >', 0)
+                 ->where('us.user_id !=', $user_id);
+
+        $query = $this->db->get();
+
+        $data['stickers'] = $query->result_array();
         $data['pagination'] = $this->pagination->create_links();
 
         $this->load->view('templates/header', $data);

@@ -25,19 +25,26 @@ class Trades extends CI_Controller {
 
     public function create($sticker_id) {
         // Validasi sticker_id
-        $sticker = $this->db->get_where('stickers', ['id' => $sticker_id])->row();
-        if (!$sticker) {
-            show_404();
+        if (!$sticker_id) {
+            redirect('feed');
             return;
         }
 
-        // Dapatkan data user yang sedang login
         $user_id = $this->session->userdata('user_id');
+
+        // Dapatkan detail stiker yang diminta dengan JOIN ke tabel stickers
+        $sticker = $this->db->select('user_stickers.*, stickers.number as sticker_number')
+                            ->from('user_stickers')
+                            ->join('stickers', 'stickers.id = user_stickers.sticker_id')
+                            ->where('user_stickers.sticker_id', $sticker_id)
+                            ->get()
+                            ->row();
         
-        // Dapatkan stiker yang dimiliki user untuk ditawarkan
-        $data['owned_stickers'] = $this->db->select('user_stickers.*, stickers.number as sticker_number')
+        // Dapatkan stiker yang dimiliki user untuk ditawarkan dengan informasi kategori
+        $data['owned_stickers'] = $this->db->select('user_stickers.*, stickers.number as sticker_number, sticker_categories.name as category_name')
                                          ->from('user_stickers')
                                          ->join('stickers', 'stickers.id = user_stickers.sticker_id')
+                                         ->join('sticker_categories', 'sticker_categories.id = stickers.category_id')
                                          ->where('user_stickers.user_id', $user_id)
                                          ->where('user_stickers.is_for_trade', 1)
                                          ->where('user_stickers.quantity >', 0)
